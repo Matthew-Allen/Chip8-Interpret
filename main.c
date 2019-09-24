@@ -1,14 +1,19 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
+
 
 typedef struct Chip8State
 {
 	uint8_t memory[4096];
 	uint8_t registers[16];
-	uint16_t VI;
 	uint16_t stack[16];
-	uint16_t PC;
 	uint8_t stackPointer;
+	uint16_t PC;
+  uint8_t DT;
+  uint8_t ST;
+	uint16_t VI;
 } state;
 
 typedef void (*jumpTable)(uint8_t* instruction, state cpu);
@@ -319,9 +324,9 @@ void shiftRight(uint8_t* instruction, state cpu)
 void subRegRev(uint8_t* instruction, state cpu)
 {
   int underflowFlag;
-  reg1 = getLowerNibble(instruction[0]);
-  reg2 = getLowerNibble(instruction[1]);
-  cpu.registers[15] detectUnderflow(cpu.registers[reg2], cpu.registers[reg1]);
+  int reg1 = getLowerNibble(instruction[0]);
+  int reg2 = getLowerNibble(instruction[1]);
+  cpu.registers[15] = detectUnderflow(cpu.registers[reg2], cpu.registers[reg1]);
   cpu.registers[reg1] = cpu.registers[reg2] - cpu.registers[reg1];
 }
 void skipRegEq(uint8_t* instruction, state cpu)
@@ -355,18 +360,81 @@ void jmpOffset(uint8_t* instruction, state cpu)
   cpu.PC = cpu.registers[0] + offset;
 }
 
-void rand(uint8_t* instruction, state cpu)
+void storeRand(uint8_t* instruction, state cpu)
 {
   uint8_t rand8Bit = (rand() % 256) & instruction[1];
   int reg = getLowerNibble(instruction[0]);
   cpu.registers[reg] = rand8Bit;
 }
+
+void drawSprite(uint8_t* instruction, state cpu)
+{}
+
+void skipIfKey(uint8_t* instruction, state cpu)
+{
+}
+
+void skipIfNotKey(uint8_t* instruction, state cpu) // Not yet complete.
+{
+  cpu.PC++;
+}
+
+void storeDT(uint8_t* instruction, state cpu)
+{
+  int reg = getLowerNibble(instruction[0]);
+  cpu.registers[reg] = cpu.DT;
+}
+
+void setDT(uint8_t* instruction, state cpu)
+{
+  int reg = getLowerNibble(instruction[0]);
+  cpu.DT = cpu.registers[reg];
+}
+
+void setST(uint8_t* instrucstion, state cpu)
+{
+}
+
+void addRegI(uint8_t* instruction, state cpu)
+{
+  int reg = getLowerNibble(instruction[0]);
+  cpu.VI = cpu.VI + cpu.registers[reg];
+}
+
+
+void setISpriteAddr(uint8_t* instruction, state cpu)
+{
+}
+
+void storeBCD(uint8_t* instrucstion, state cpu)
+{
+}
+
+void storeRegs(uint8_t* instruction, state cpu)
+{
+  int VX = getLowerNibble(instruction[0]); 
+  for(int i = 0; i < VX; i++)
+  {
+    cpu.memory[cpu.VI + i] = cpu.registers[i];
+  }
+}
+
+void loadRegs(uint8_t* instruction, state cpu)
+{
+  int VX = getLowerNibble(instruction[0]);
+  for(int i = 0; i < VX; i++)
+  {
+    cpu.registers[i] = cpu.memory[cpu.VI + i];
+  }
+}
+
+
 int main()
 {
 	state CPUState;
   srand(time(NULL));
   uint8_t testInstruction[2] = {0x12,0xFF};
-	jumpTable instructionHandler[34] = {clearScreen, returnFromSub, jumpToAddress, executeSubroutine, skipEq, skipNeq, skipCmp, storeImmediate, addImmediate, storeReg, regOR, regAND, regXOR, addReg, subReg, shiftRight, subRegRev, shiftLeft, skipRegEq, storeAddr, jmpOffset, rand};
+	jumpTable instructionHandler[34] = {clearScreen, returnFromSub, jumpToAddress, executeSubroutine, skipEq, skipNeq, skipCmp, storeImmediate, addImmediate, storeReg, regOR, regAND, regXOR, addReg, subReg, shiftRight, subRegRev, shiftLeft, skipRegEq, storeAddr, jmpOffset, storeRand, drawSprite, skipIfKey, skipIfNotKey, storeDT, setDT, setST, addRegI, setISpriteAddr, storeBCD, storeRegs, loadRegs};
   instructionHandler[2](testInstruction,CPUState);
 
 	//testDecoder();
