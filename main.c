@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include "screen.h"
 
 typedef struct Chip8State
 {
@@ -199,8 +199,14 @@ int detectUnderflow(uint8_t a, uint8_t b)
     return 1;
   }
 }
-void clearScreen(uint8_t* instruction, state cpu)
+
+void executeASM() // This function intentionally not implemented.
 {}
+
+void clearScreen(uint8_t* instruction, state cpu)
+{
+  printf("Clear screen function called.\n");
+}
 
 void returnFromSub(uint8_t* instruction, state cpu) 
 {
@@ -432,11 +438,13 @@ void loadRegs(uint8_t* instruction, state cpu)
 int main()
 {
 	state CPUState;
+  int instructionIndex;
   srand(time(NULL));
-  uint8_t testInstruction[2] = {0x12,0xFF};
-	jumpTable instructionHandler[34] = {clearScreen, returnFromSub, jumpToAddress, executeSubroutine, skipEq, skipNeq, skipCmp, storeImmediate, addImmediate, storeReg, regOR, regAND, regXOR, addReg, subReg, shiftRight, subRegRev, shiftLeft, skipRegEq, storeAddr, jmpOffset, storeRand, drawSprite, skipIfKey, skipIfNotKey, storeDT, setDT, setST, addRegI, setISpriteAddr, storeBCD, storeRegs, loadRegs};
-  instructionHandler[2](testInstruction,CPUState);
+  uint8_t testInstruction[2] = {0x00,0xE0};
+  instructionIndex = decodeInstruction(testInstruction);
+	jumpTable instructionHandler[34] = {executeASM, clearScreen, returnFromSub, jumpToAddress, executeSubroutine, skipEq, skipNeq, skipCmp, storeImmediate, addImmediate, storeReg, regOR, regAND, regXOR, addReg, subReg, shiftRight, subRegRev, shiftLeft, skipRegEq, storeAddr, jmpOffset, storeRand, drawSprite, skipIfKey, skipIfNotKey, storeDT, setDT, setST, addRegI, setISpriteAddr, storeBCD, storeRegs, loadRegs};
+  instructionHandler[instructionIndex](testInstruction,CPUState);
 
-	//testDecoder();
+  initScreen();
 	return 0;
 }
