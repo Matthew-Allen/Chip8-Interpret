@@ -1,5 +1,5 @@
 build:
-	gcc main.c screen.c -o main.o -lSDL2
+	gcc main.c interpret.c -o main.o -lSDL2 -lSDL2_ttf
 
 run:
 	./main.o
