@@ -1,0 +1,5 @@
+test/Testinterpret.c:16:test_do_nothing:PASS
+
+-----------------------
+1 Tests 0 Failures 0 Ignored 
+OK
