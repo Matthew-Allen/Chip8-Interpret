@@ -13,6 +13,7 @@ else
 	TARGET_EXTENSION=out
 endif
 
+.PHONY: build
 .PHONY: clean
 .PHONY: test
 
@@ -26,18 +27,26 @@ PATHR = build/results/
 
 BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR)
 
+SRC = $(wildcard $(PATHS)*.c)
 SRCT = $(wildcard $(PATHT)*.c)
 
 COMPILE=gcc -c
-LINK=gcc
+LINK=gcc 
+LINKFLAGS= -lSDL2 -lSDL2main -lSDL2_ttf
 DEPEND=gcc -MM -MG -MF
-CFLAGS=-I. -I$(PATHU) -I$(PATHS) -DTEST
+CFLAGS=-I. -I$(PATHU) -I$(PATHS) -ISDL2 -DTEST
 
 RESULTS = $(patsubst $(PATHT)Test%.c,$(PATHR)Test%.txt,$(SRCT) )
+OBJECTS = $(patsubst $(PATHS)%.c,$(PATHO)%.o,$(SRC) )
 
 PASSED = `grep -s PASS $(PATHR)*.txt`
 FAIL = `grep -s FAIL $(PATHR)*.txt`
 IGNORE = `grep -s IGNORE $(PATHR)*.txt`
+
+build: $(BUILD_PATHS) $(PATHB)interpret.out
+
+$(PATHB)chip8-interpret.out: $(OBJECTS)
+	$(LINK) -o $@ $^ $(LINKFLAGS)
 
 test: $(BUILD_PATHS) $(RESULTS)
 	@echo "-----------------------\nIGNORES:\n-----------------------"

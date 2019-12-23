@@ -1,5 +1,6 @@
-test/Testinterpret.c:16:test_do_nothing:PASS
+test/Testinterpret.c:189:test_util_functions:PASS
+test/Testinterpret.c:190:test_decoder:PASS
 
 -----------------------
-1 Tests 0 Failures 0 Ignored 
+2 Tests 0 Failures 0 Ignored 
 OK

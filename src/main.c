@@ -3,10 +3,11 @@
 #include <stdbool.h>
 #include "interpret.h"
 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
-
-
+int main()
+{
+  return 0;
+}
+/*
 int main(int argc, char* argv[])
 {
 
@@ -70,7 +71,4 @@ int main(int argc, char* argv[])
 
   return 0;
 }
-
-void quitScreen()
-{
-}
+*/

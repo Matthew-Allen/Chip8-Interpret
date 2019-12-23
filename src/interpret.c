@@ -35,78 +35,132 @@ int decodeInstruction(uint8_t* instruction)
 	nibbles[2] = getUpperNibble(instruction[1]);
 	nibbles[3] = getLowerNibble(instruction[1]);
 
-	if(instruction[0] == 0x00 &&  instruction[1] == 0xE0)
-	{
-		return 1;
+  switch(nibbles[0])
+  {
+    case 0x00:
+      if(instruction[1] == 0xE0)
+      {
+        return CLS;
+      } else if (instruction[1] == 0xEE)
+      {
+        return RETURN;
+      } else
+      {
+        return EXEC_ASM;
+      }
+   case 0x01:
+      return JMP;
+      break;
+   case 0x02:
+      return EXEC_SUB;
+      break;
+   case 0x03:
+      return SKIP_EQ_IMM;
+      break;
+   case 0x04:
+      return SKIP_NEQ_IMM;
+      break;
+   case 0x05:
+      return SKIP_EQ;
+      break;
+   case 0x06:
+      return STORE_IMM;
+      break;
+   case 0x07:
+      return ADD_IMM;
+      break;
+   case 0x08:
+      switch(nibbles[3])
+      {
+        case 0x00:
+          return STORE;
+          break;
+        case 0x01:
+          return OR;
+          break;
+        case 0x02:
+          return AND;
+          break;
+        case 0x03:
+          return XOR;
+          break;
+        case 0x04:
+          return ADD;
+          break;
+        case 0x05:
+          return SUBXY;
+          break;
+        case 0x06:
+          return SHIFT_RIGHT;
+          break;
+        case 0x07:
+          return SUBYX;
+          break;
+        case 0x0E:
+          return SHIFT_LEFT;
+          break;
+      }
+   case 0x09:
+      return SKIP_NEQ;
+      break;
+   case 0x0A:
+      return LOAD_I_IMM;
+      break;
+   case 0x0B:
+      return JMPI_OFFSET;
+      break;
+   case 0x0C:
+      return RAND;
+      break;
+   case 0x0D:
+      return DRAW_SPRITE;
+      break;
+   case 0x0E:
 
-	} else if (instruction[0] == 0x00 && instruction[1] == 0xEE)
-	{
-		return 2;
+      switch(instruction[1])
+      {
+        case 0x9E:
+          return SKIP_IFKEY;
+          break;
+      }
+   case 0x0F:
+      
+      switch(instruction[1])
+      {
+        case 0xA1:
+          return SKIP_NOTKEY;
+          break;
+        case 0x07:
+          return STORE_DELAY;
+          break;
+        case 0x0A:
+          return WAIT_FOR_KEY;
+          break;
+        case 0x15:
+          return SET_DELAY;
+          break;
+        case 0x18:
+          return SET_SOUND_TIMER;
+          break;
+        case 0x1E:
+          return ADD_VX_I;
+          break;
+        case 0x29:
+          return SET_I_SPRITE;
+          break;
+        case 0x33:
+          return STORE_BCD;
+          break;
+        case 0x55:
+          return STORE_REGISTER_RANGE;
+          break;
+        case 0x65:
+          return LOAD_REGISTER_RANGE;
+          break;
+      }
+  }
 
-	} else if (nibbles[0] < 0x08)
-	{
-		return (2 + nibbles[0]); // 2-9
-
-	} else if (nibbles[0] == 0x08)
-	{
-		if(nibbles[3] == 0x0E)
-		{
-			return 18;
-		} else
-		{ 
-			return (10 + nibbles[3]); // 10-18
-		}
-
-	} else if (nibbles[0] < 0x0E)
-	{
-		return (19 + nibbles[0] - 0x09); // 19-23
-
-	} else if (nibbles[0] < 0x0F) // 24-25
-	{
-		if(nibbles[2] == 0x09 && nibbles[3] == 0x0E)
-		{
-			return 24;
-
-		} else if(nibbles[2] == 0x0A && nibbles[3] == 0x01)
-		{
-			return 25;
-
-		}
-	} else if (nibbles[0] == 0x0F) // 26-33
-	{
-		if(instruction[1] == 0x07)
-		{
-			return 26;
-		} else if (instruction[1] == 0x0A)
-		{
-			return 27;
-		} else if (instruction[1] == 0x15)
-		{
-			return 28;
-		} else if (instruction[1] == 0x18)
-		{
-			return 29;
-		} else if (instruction[1] == 0x1E)
-		{
-			return 30;
-		} else if (instruction[1] == 0x29)
-		{
-			return 31;
-		} else if (instruction[1] == 0x33)
-		{
-			return 32;
-		} else if (instruction[1] == 0x55)
-		{
-			return 33;
-		} else if (instruction[1] == 0x65)
-		{
-			return 34;
-		}
-	}
-
-	return 0;
-
-
+   return INVALID_OP;
 }
 
 void testDecoder()
