@@ -25,7 +25,7 @@ void lower_three_nibbles(char *instruction, int expectedResult) // Sweeps throug
   }
 }
 
-void middle_two_nibbles(char * instruction, int expectedResult)
+void middle_two_nibbles(char * instruction, int expectedResult) // Sweeps through middle-two nibble range of input instruction
 {
   for(int i = 0; i < 16; i++)
   {
@@ -41,7 +41,7 @@ void middle_two_nibbles(char * instruction, int expectedResult)
 void test_decoder(void)
 {
   uint8_t instruction[2] = {0,0}; 
-  TEST_ASSERT_EQUAL_INT(EXEC_ASM, decodeInstruction(instruction)); // Execute machine language
+  TEST_ASSERT_EQUAL_INT(EXEC_ASM, decodeInstruction(instruction)); 
 
   instruction[0] = 0x00;
   instruction[1] = 0xE0;
@@ -183,10 +183,31 @@ void test_decoder(void)
 
 }
 
+void test_return_function(void)
+{
+  
+  Chip8State testState;
+  uint8_t testInstruction[2];
+  testInstruction[0] = 0x00;
+  testInstruction[1] = 0xEE;
+  testState.stackPointer = 1;
+  testState.stack[0] = 1024;
+  testState.PC = 2048;
+  returnFromSub(testInstruction, &testState);
+  TEST_ASSERT_EQUAL_UINT16(testState.PC, 1024);
+  TEST_ASSERT_EQUAL_UINT8(testState.stackPointer, 0);
+}
+
+void test_jump_function(void)
+{
+
+}
+
 int main(void)
 {
   UNITY_BEGIN();
   RUN_TEST(test_util_functions);
   RUN_TEST(test_decoder);
+  RUN_TEST(test_return_function);
   return UNITY_END();
 }

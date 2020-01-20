@@ -1,16 +1,59 @@
 #include "interpret.h"
 
-#define DEBUG_ENABLED true
 
-void printDebug(char* debugString)
+typedef void (*jumpTable)(uint8_t* instruction, Chip8State *cpu);
+
+
+void initialize(Chip8State* cpu)
 {
-  if(DEBUG_ENABLED)
-  {
-    printf("%s",debugString);
-  }
-}
 
-typedef void (*jumpTable)(uint8_t* instruction, Chip8State cpu);
+  //Load reserved data
+  //Array containing sprite data for built-in hexadecimal font 
+  uint8_t digits[80] = {
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80,}; // F
+
+  for(int i = 0; i < 80; i++) // Load font sprite data to system memory
+  {
+    cpu->memory[i] = digits[i];
+  }
+  
+  for(int i = 0; i < 8; i++)
+  {
+    for(int j = 0; j < 4; j++)
+    {
+      cpu->screen[i][j] = 0x00;
+    }
+  }
+  
+  for(int i = 0; i < 16; i++) // Zero out registers and stack
+  {
+    cpu->registers[i] = 0x00;
+    cpu->stack[i] = 0x00;
+  }
+  
+  cpu->stackPointer = 0x00;
+  cpu->PC = 0x200;
+  cpu->DT = 0x00;
+  cpu->ST = 0x00;
+  cpu->VI = 0x00;
+
+  return;
+}
 
 uint8_t getUpperNibble(uint8_t inputChar)
 {
@@ -38,15 +81,17 @@ int decodeInstruction(uint8_t* instruction)
   switch(nibbles[0])
   {
     case 0x00:
-      if(instruction[1] == 0xE0)
+      switch(instruction[1])
       {
-        return CLS;
-      } else if (instruction[1] == 0xEE)
-      {
-        return RETURN;
-      } else
-      {
-        return EXEC_ASM;
+        case 0xE0:
+          return CLS;
+          break;
+        case 0xEE:
+          return RETURN;
+          break;
+        default:
+          return EXEC_ASM;
+          break;
       }
    case 0x01:
       return JMP;
@@ -122,14 +167,14 @@ int decodeInstruction(uint8_t* instruction)
         case 0x9E:
           return SKIP_IFKEY;
           break;
+        case 0xA1:
+          return SKIP_NOTKEY;
+          break;
       }
    case 0x0F:
       
       switch(instruction[1])
       {
-        case 0xA1:
-          return SKIP_NOTKEY;
-          break;
         case 0x07:
           return STORE_DELAY;
           break;
@@ -161,23 +206,6 @@ int decodeInstruction(uint8_t* instruction)
   }
 
    return INVALID_OP;
-}
-
-void testDecoder()
-{
-
-	int decodedValue = 0;
-  uint8_t instruction[2]; 
-  
-  for(int i = 0; i < (256*256); i++)
-  {
-    instruction[0] = ((i & 0xFF00) >> 4);
-    instruction[1] = (i & 0x00FF);
-    decodedValue = decodeInstruction(instruction);
-    
-    printf("%d",decodedValue);
-  }
-  return;
 }
 
 uint16_t decode12bitAddr(uint8_t* instruction)
@@ -213,267 +241,327 @@ int detectUnderflow(uint8_t a, uint8_t b)
 void executeASM() // This function intentionally not implemented.
 {}
 
-void clearScreen(uint8_t* instruction, Chip8State cpu)
+void clearScreen(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Clear screen function called.\n");
+  for(int i = 0; i < 64; i++)
+  {
+    for(int j = 0; j < 32; j++)
+    {
+      cpu->screen[i][j] = 0;
+    }
+  }
 }
 
-void returnFromSub(uint8_t* instruction, Chip8State cpu) 
+void returnFromSub(uint8_t* instruction, Chip8State *cpu) 
 {
-//  printDebug("Return from subroutine function called.\n");
-	cpu.PC = cpu.stack[cpu.stackPointer-1];
-	cpu.stackPointer --;
+	cpu->PC = cpu->stack[cpu->stackPointer-1];
+	cpu->stackPointer --;
 }
 
-void jumpToAddress(uint8_t* instruction, Chip8State cpu)
+void jumpToAddress(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Jump to address function called.\n");
   uint16_t address = decode12bitAddr(instruction); 
-  cpu.PC = address;
+  cpu->PC = address;
 }
 
-void executeSubroutine(uint8_t* instruction, Chip8State cpu)
+void executeSubroutine(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Execute subroutine function called.\n");
   uint16_t address = decode12bitAddr(instruction);
-  cpu.stack[cpu.stackPointer] = address;
-  cpu.stackPointer++;
+  cpu->stack[cpu->stackPointer] = address;
+  cpu->stackPointer++;
 }
 
-void skipEq(uint8_t* instruction, Chip8State cpu)
+void skipEqImm(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Skip if equal function called.\n");
   uint8_t value = instruction[1];
   uint8_t reg = (instruction[0] & 0x0F);
-  if(value == cpu.registers[reg])
+  if(value == cpu->registers[reg])
   {
-    cpu.PC++;
+    cpu->PC++;
   }
 }
 
-void skipNeq(uint8_t* instruction, Chip8State cpu)
+void skipNeqImm(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Skip if not equal function called.\n");
   uint8_t value = instruction[1];
   uint8_t reg = (instruction[0] * 0x0F);
-  if(value != cpu.registers[reg])
+  if(value != cpu->registers[reg])
   {
-    cpu.PC++;
+    cpu->PC++;
   }
 }
 
-void skipCmp(uint8_t* instruction, Chip8State cpu)
+void skipEq(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Skip if register comparison is equal function called.\n");
   uint8_t reg1 = getLowerNibble(instruction[0]);
   uint8_t reg2 = getUpperNibble(instruction[1]);
-  if(cpu.registers[reg1] == cpu.registers[reg2])
+  if(cpu->registers[reg1] == cpu->registers[reg2])
   {
-    cpu.PC++;
+    cpu->PC++;
   }
 }
 
-void storeImmediate(uint8_t* instruction, Chip8State cpu)
+void storeImmediate(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Store immediate function called.\n");
   int reg = getLowerNibble(instruction[0]);
-  cpu.registers[reg] = instruction[1];
+  cpu->registers[reg] = instruction[1];
 }
 
-void addImmediate(uint8_t* instruction, Chip8State cpu)
+void addImmediate(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Add immediate function called.\n");
   int reg = getLowerNibble(instruction[0]);
-  cpu.registers[reg] = instruction[1];
+  cpu->registers[reg] = instruction[1];
 }
 
-void storeReg(uint8_t* instruction, Chip8State cpu)
+void store(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Store Register function called.\n");
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  cpu.registers[reg1] = cpu.registers[reg2];
+  cpu->registers[reg1] = cpu->registers[reg2];
 }
 
-void regOR(uint8_t* instruction, Chip8State cpu)
+void or(uint8_t* instruction, Chip8State *cpu)
 { 
-  printDebug("Register OR function called.\n");
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  cpu.registers[reg1] |= cpu.registers[reg2];
+  cpu->registers[reg1] |= cpu->registers[reg2];
 }
 
-void regAND(uint8_t* instruction, Chip8State cpu)
+void and(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Register AND function called.\n");
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  cpu.registers[reg1] &= cpu.registers[reg2];
+  cpu->registers[reg1] &= cpu->registers[reg2];
 }
 
-void regXOR(uint8_t* instruction, Chip8State cpu)
+void xor(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Register XOR function called.\n");
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
 }
 
-void addReg(uint8_t* instruction, Chip8State cpu)
+void add(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Add register function called.\n");
   int overflowFlag;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
 
-  overflowFlag = detectOverflow(cpu.registers[reg1], cpu.registers[reg2]);
-  cpu.registers[reg1] += cpu.registers[reg2];
-  cpu.registers[15] = overflowFlag;
+  overflowFlag = detectOverflow(cpu->registers[reg1], cpu->registers[reg2]);
+  cpu->registers[reg1] += cpu->registers[reg2];
+  cpu->registers[15] = overflowFlag;
 }
 
-void subReg(uint8_t* instruction, Chip8State cpu)
+void subXY(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Subtract register function called.\n");
   int underflowFlag;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
 
-  underflowFlag = detectUnderflow(cpu.registers[reg1], cpu.registers[reg2]);
-  cpu.registers[reg1] -= cpu.registers[reg2];
-  cpu.registers[15] = underflowFlag;
+  underflowFlag = detectUnderflow(cpu->registers[reg1], cpu->registers[reg2]);
+  cpu->registers[reg1] -= cpu->registers[reg2];
+  cpu->registers[15] = underflowFlag;
 }
 
-void shiftRight(uint8_t* instruction, Chip8State cpu)
+void shiftRight(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Shift register right function called.\n");
   int lsb;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  lsb = cpu.registers[reg2] & 0x01; 
-  cpu.registers[reg1] = cpu.registers[reg2] >> 1;
+  lsb = cpu->registers[reg2] & 0x01; 
+  cpu->registers[reg1] = cpu->registers[reg2] >> 1;
 }
 
-void subRegRev(uint8_t* instruction, Chip8State cpu)
+void subYX(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Sub registers backwards function called.\n");
   int underflowFlag;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getLowerNibble(instruction[1]);
-  cpu.registers[15] = detectUnderflow(cpu.registers[reg2], cpu.registers[reg1]);
-  cpu.registers[reg1] = cpu.registers[reg2] - cpu.registers[reg1];
+  cpu->registers[15] = detectUnderflow(cpu->registers[reg2], cpu->registers[reg1]);
+  cpu->registers[reg1] = cpu->registers[reg2] - cpu->registers[reg1];
 }
-void skipRegEq(uint8_t* instruction, Chip8State cpu)
+void skipNeq(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Print if registers are equal function called.\n");
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getLowerNibble(instruction[1]);
-  if(cpu.registers[reg1] == cpu.registers[reg2])
+  if(cpu->registers[reg1] != cpu->registers[reg2])
   {
-    cpu.PC++;
+    cpu->PC++;
   }
 }
 
-void shiftLeft(uint8_t* instruction, Chip8State cpu)
+void shiftLeft(uint8_t* instruction, Chip8State *cpu)
 { 
-  printDebug("Shift left function called.\n");
   int lsb;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  lsb = cpu.registers[reg2] & 0x80; 
-  cpu.registers[reg1] = cpu.registers[reg2] << 1;
+  lsb = cpu->registers[reg2] & 0x80; 
+  cpu->registers[reg1] = cpu->registers[reg2] << 1;
 }
 
-void storeAddr(uint8_t* instruction, Chip8State cpu)
+void loadI_Imm(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Store address function called.\n");
   uint16_t address = decode12bitAddr(instruction);
-  cpu.VI = address;
+  cpu->VI = address;
 }
 
-void jmpOffset(uint8_t* instruction, Chip8State cpu)
+void jmpIOffset(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Jump offset function called.\n");
   uint16_t offset = decode12bitAddr(instruction);
-  cpu.PC = cpu.registers[0] + offset;
+  cpu->PC = cpu->registers[0] + offset;
 }
 
-void storeRand(uint8_t* instruction, Chip8State cpu)
+void setRand(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Store rand function called.\n");
   uint8_t rand8Bit = (rand() % 256) & instruction[1];
   int reg = getLowerNibble(instruction[0]);
-  cpu.registers[reg] = rand8Bit;
+  cpu->registers[reg] = rand8Bit;
 }
 
-void drawSprite(uint8_t* instruction, Chip8State cpu)
+void drawSprite(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Draw sprite function called.\n");
+  uint16_t spriteAddr = cpu->VI;
+  uint8_t xCoord = getLowerNibble(instruction[0]) % 64;
+  uint8_t yCoord = getUpperNibble(instruction[1]) % 32;
+  int numBytes = getLowerNibble(instruction[1]);
+  uint8_t spritePixels[8];
+
+  cpu->registers[15] = 0x00;
+
+  for(int i = 0; i < numBytes; i++)
+  {
+    uint8_t spriteByte = cpu->memory[spriteAddr + i];
+    uint8_t currentBit;
+    for(int j = 7; i >= 0; j--)
+    {
+      currentBit = spriteByte & 0x01;
+      if(currentBit == 1)
+      {
+        spritePixels[j] = 1;
+      } else
+      {
+        spritePixels[j] = 0;
+      }
+      currentBit >>= 1;
+    }
+
+    for(int j = 0; j < 8; j++)
+    {
+      int x = xCoord + j;
+      int y = yCoord + i;
+      
+      if(x > 0x3F)
+      {
+        continue;
+      }
+      if(y > 0x1F)
+      {
+        continue;
+      }
+
+      if(spritePixels[j] == 1)
+      {
+        if(cpu->screen[x][y] == 1)
+        {
+          cpu->screen[x][y] = 0;
+          cpu->registers[15] = 0x01;
+        } else
+        {
+          cpu->screen[x][y] = 1;
+        }
+      }
+    }
+  }
 }
 
-void skipIfKey(uint8_t* instruction, Chip8State cpu)
+void skipIfKey(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Skip if key function called.\n");
+ // TODO: Implement
 }
 
-void skipIfNotKey(uint8_t* instruction, Chip8State cpu) // Not yet complete.
+void skipIfNotKey(uint8_t* instruction, Chip8State *cpu) 
 {
-  printDebug("Skip if not key function called.\n");
-  cpu.PC++;
+  cpu->PC++; // TODO: Finish implementing
 }
 
-void storeDT(uint8_t* instruction, Chip8State cpu)
+void storeDT(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Store DT function called.\n");
   int reg = getLowerNibble(instruction[0]);
-  cpu.registers[reg] = cpu.DT;
+  cpu->registers[reg] = cpu->DT;
 }
 
-void setDT(uint8_t* instruction, Chip8State cpu)
+void waitKey(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Set DT function called.\n");
+  // TODO: Implement
+}
+
+void setDT(uint8_t* instruction, Chip8State *cpu)
+{
   int reg = getLowerNibble(instruction[0]);
-  cpu.DT = cpu.registers[reg];
+  cpu->DT = cpu->registers[reg];
 }
 
-void setST(uint8_t* instrucstion, Chip8State cpu)
+void setST(uint8_t* instrucstion, Chip8State *cpu)
 {
-  printDebug("Set ST function called.\n");
+  // TODO: Implement
 }
 
-void addRegI(uint8_t* instruction, Chip8State cpu)
+void addI(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Add register I function called.\n");
   int reg = getLowerNibble(instruction[0]);
-  cpu.VI = cpu.VI + cpu.registers[reg];
+  cpu->VI = cpu->VI + cpu->registers[reg];
 }
 
 
-void setISpriteAddr(uint8_t* instruction, Chip8State cpu)
+void setISpriteAddr(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Set I Sprite Addr function called.\n");
+  // TODO: Implement
 }
 
-void storeBCD(uint8_t* instrucstion, Chip8State cpu)
+void storeBCD(uint8_t* instrucstion, Chip8State *cpu)
 {
-  printDebug("Store BCD function called.\n");
+  // TODO: Implement
 }
 
-void storeRegs(uint8_t* instruction, Chip8State cpu)
+void storeRegs(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Store registers function called.\n");
   int VX = getLowerNibble(instruction[0]); 
   for(int i = 0; i < VX; i++)
   {
-    cpu.memory[cpu.VI + i] = cpu.registers[i];
+    cpu->memory[cpu->VI + i] = cpu->registers[i];
   }
 }
 
-void loadRegs(uint8_t* instruction, Chip8State cpu)
+void loadRegs(uint8_t* instruction, Chip8State *cpu)
 {
-  printDebug("Load registers function called.\n");
   int VX = getLowerNibble(instruction[0]);
   for(int i = 0; i < VX; i++)
   {
-    cpu.registers[i] = cpu.memory[cpu.VI + i];
+    cpu->registers[i] = cpu->memory[cpu->VI + i];
   }
 }
 
+int run(Chip8State *cpu)
+{
+  static const jumpTable opFuncs[35] = {
+    executeASM, clearScreen, returnFromSub, jumpToAddress,
+    executeSubroutine, skipEqImm, skipNeqImm, skipEq,
+    storeImmediate, addImmediate, store, or,
+    and, xor, add, subXY,
+    shiftRight, subYX, shiftLeft, skipNeq,
+    loadI_Imm, jmpIOffset, setRand, drawSprite,
+    skipIfKey, skipIfNotKey, storeDT, waitKey,
+    setDT, setST, addI, setISpriteAddr,
+    storeBCD, storeRegs, loadRegs};
+
+
+  initialize(cpu);
+  bool running = true;
+
+  while(running)
+  {
+    uint8_t* nextInstruction = &cpu->memory[cpu->PC];
+    opFuncs[decodeInstruction(nextInstruction)](nextInstruction, cpu);
+    cpu->PC += 2;
+  }
+
+}

@@ -43,7 +43,7 @@ PASSED = `grep -s PASS $(PATHR)*.txt`
 FAIL = `grep -s FAIL $(PATHR)*.txt`
 IGNORE = `grep -s IGNORE $(PATHR)*.txt`
 
-build: $(BUILD_PATHS) $(PATHB)interpret.out
+build: $(BUILD_PATHS) $(PATHB)chip8-interpret.out
 
 $(PATHB)chip8-interpret.out: $(OBJECTS)
 	$(LINK) -o $@ $^ $(LINKFLAGS)
