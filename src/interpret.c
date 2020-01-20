@@ -500,9 +500,10 @@ void setDT(uint8_t* instruction, Chip8State *cpu)
   cpu->DT = cpu->registers[reg];
 }
 
-void setST(uint8_t* instrucstion, Chip8State *cpu)
+void setST(uint8_t* instruction, Chip8State *cpu)
 {
-  // TODO: Implement
+  int targetRegister = getLowerNibble(instruction[0]);
+  cpu->ST = cpu->registers[targetRegister];
 }
 
 void addI(uint8_t* instruction, Chip8State *cpu)
@@ -514,12 +515,24 @@ void addI(uint8_t* instruction, Chip8State *cpu)
 
 void setISpriteAddr(uint8_t* instruction, Chip8State *cpu)
 {
-  // TODO: Implement
+  int targetRegister = getLowerNibble(instruction[0]);
+  cpu->VI = cpu->registers[targetRegister];
 }
 
-void storeBCD(uint8_t* instrucstion, Chip8State *cpu)
+void storeBCD(uint8_t* instruction, Chip8State *cpu)
 {
-  // TODO: Implement
+  int targetRegister = getLowerNibble(instruction[0]);
+  uint8_t value = cpu->registers[targetRegister];
+  uint8_t BCDValue = 0;
+  for(int i = 0; i < 8; i++)
+  {
+    BCDValue | (value & 0x01);
+    BCDValue <<= 1;
+    value >>= 1;
+  }
+  cpu->memory[cpu->VI] = BCDValue;
+  cpu->memory[cpu->VI] = BCDValue;
+  cpu->memory[cpu->VI] = BCDValue;
 }
 
 void storeRegs(uint8_t* instruction, Chip8State *cpu)
