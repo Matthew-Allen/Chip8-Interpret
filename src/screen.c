@@ -47,10 +47,8 @@ int initScreen()
 
   SDL_Delay(50);
 
-  SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0, 0, 0));
-  SDL_UpdateWindowSurface(displayWindow);
-
   windowRenderer = SDL_CreateRenderer(displayWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
   if(windowRenderer == NULL)
   {
     return -1;
@@ -62,15 +60,15 @@ int initScreen()
 void drawPixel(int x, int y)
 {
   SDL_Rect pixelRect;
-  pixelRect.h = SCREEN_WIDTH / 32;
-  pixelRect.w = SCREEN_HEIGHT / 64;
+  pixelRect.h = SCREEN_HEIGHT / 32;
+  pixelRect.w = SCREEN_WIDTH / 64;
   pixelRect.x = x*pixelRect.w;
   pixelRect.y = y*pixelRect.h;
 
   SDL_RenderFillRect(windowRenderer, &pixelRect);
 }
 
-void drawScreen(Chip8State* cpu)
+void drawScreen(uint8_t screen[][32])
 {
   
   SDL_SetRenderDrawColor(windowRenderer, 0,0,0,255);
@@ -79,7 +77,7 @@ void drawScreen(Chip8State* cpu)
   {
     for(int j = 0; j < 32; j++)
     {
-      if(cpu->screen[i][j] == 1)
+      if(screen[i][j] == 1)
       {
         SDL_SetRenderDrawColor(windowRenderer, 255, 255, 255, 255);
         drawPixel(i,j);
@@ -90,7 +88,7 @@ void drawScreen(Chip8State* cpu)
 }
 
 
-void quitScreen()
+void cleanupSDL()
 {
   SDL_DestroyWindow(displayWindow);
   TTF_Quit();

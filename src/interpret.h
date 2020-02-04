@@ -5,11 +5,14 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <time.h>
 
 #define PROGRAM_MEMORY_START 0x200
-#define PROGRAM_MEMORY_END 0x69F
+#define PROGRAM_MEMORY_END 0x1000
 #define FONT_DATA_START 0x000
 #define FONT_DATA_END 0x050
+
 typedef struct cpuState 
 {
 	uint8_t memory[4096];
@@ -46,5 +49,15 @@ int decodeInstruction(uint8_t* instruction);
 void returnFromSub(uint8_t* instruction, Chip8State *cpu);
 
 void initialize(Chip8State* cpu);
+
+int run(Chip8State *cpu);
+
+void initialize(Chip8State* cpu);
+
+void setDebug(bool value);
+
+void clearNumpad();
+
+void setNumpadKey(int keyIndex);
 
 #endif

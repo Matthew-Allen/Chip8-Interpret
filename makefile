@@ -30,7 +30,7 @@ BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR)
 SRC = $(wildcard $(PATHS)*.c)
 SRCT = $(wildcard $(PATHT)*.c)
 
-COMPILE=gcc -c
+COMPILE=gcc -c -g
 LINK=gcc 
 LINKFLAGS= -lSDL2 -lSDL2main -lSDL2_ttf
 DEPEND=gcc -MM -MG -MF

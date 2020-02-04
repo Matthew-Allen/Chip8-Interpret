@@ -1,13 +1,53 @@
 #include "interpret.h"
 
-
 typedef void (*jumpTable)(uint8_t* instruction, Chip8State *cpu);
+static bool debugOn;
 
+static bool numpad[16];
+
+void clearNumpad()
+{
+  for(int i = 0; i < 16; i++)
+  {
+    numpad[i] = false;
+  }
+}
+
+void setNumpadKey(int keyIndex)
+{
+  numpad[keyIndex] = true;
+}
+
+void debugPrint(const char * format,...)
+{
+  va_list args;
+  va_start( args, format);
+  if(debugOn)
+  {
+    vprintf(format, args);
+  }
+  va_end(args);
+}
+
+void setDebug(bool value)
+{
+  static bool set = false;
+  if(!set)
+  {
+    debugOn = value;
+    set = true;
+    debugPrint("Debug mode set to ON.\n");
+  } else
+  {
+    debugPrint("Unable to set debug mode: Already set.\n");
+  }
+}
 
 void initialize(Chip8State* cpu)
 {
 
-  //Load reserved data
+  //Load reserved-memory data
+  
   //Array containing sprite data for built-in hexadecimal font 
   uint8_t digits[80] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -32,11 +72,11 @@ void initialize(Chip8State* cpu)
     cpu->memory[i] = digits[i];
   }
   
-  for(int i = 0; i < 8; i++)
+  for(int i = 0; i < 64; i++) // Zero out screen;
   {
-    for(int j = 0; j < 4; j++)
+    for(int j = 0; j < 32; j++)
     {
-      cpu->screen[i][j] = 0x00;
+      cpu->screen[i][j] = 0;
     }
   }
   
@@ -210,7 +250,7 @@ int decodeInstruction(uint8_t* instruction)
 
 uint16_t decode12bitAddr(uint8_t* instruction)
 {
-  uint16_t address = *instruction; 
+  uint16_t address = 0;
   address += (instruction[0] & 0x0F) << 8;
   address += instruction[1];
   return address;
@@ -261,33 +301,36 @@ void returnFromSub(uint8_t* instruction, Chip8State *cpu)
 void jumpToAddress(uint8_t* instruction, Chip8State *cpu)
 {
   uint16_t address = decode12bitAddr(instruction); 
-  cpu->PC = address;
+  cpu->PC = address-2;
 }
 
 void executeSubroutine(uint8_t* instruction, Chip8State *cpu)
 {
   uint16_t address = decode12bitAddr(instruction);
-  cpu->stack[cpu->stackPointer] = address;
+  debugPrint("Executing subroutine at 0x%X\n", address);
+  cpu->stack[cpu->stackPointer] = cpu->PC;
   cpu->stackPointer++;
+  cpu->PC = address - 2;
 }
 
 void skipEqImm(uint8_t* instruction, Chip8State *cpu)
 {
   uint8_t value = instruction[1];
-  uint8_t reg = (instruction[0] & 0x0F);
+  uint8_t reg = getLowerNibble(instruction[0]);
   if(value == cpu->registers[reg])
   {
-    cpu->PC++;
+    //debugPrint("Equality found, skipping next instruction.\n");
+    cpu->PC += 2;
   }
 }
 
 void skipNeqImm(uint8_t* instruction, Chip8State *cpu)
 {
   uint8_t value = instruction[1];
-  uint8_t reg = (instruction[0] * 0x0F);
+  uint8_t reg = (instruction[0] & 0x0F);
   if(value != cpu->registers[reg])
   {
-    cpu->PC++;
+    cpu->PC += 2;
   }
 }
 
@@ -297,7 +340,7 @@ void skipEq(uint8_t* instruction, Chip8State *cpu)
   uint8_t reg2 = getUpperNibble(instruction[1]);
   if(cpu->registers[reg1] == cpu->registers[reg2])
   {
-    cpu->PC++;
+    cpu->PC += 2;
   }
 }
 
@@ -310,7 +353,9 @@ void storeImmediate(uint8_t* instruction, Chip8State *cpu)
 void addImmediate(uint8_t* instruction, Chip8State *cpu)
 {
   int reg = getLowerNibble(instruction[0]);
-  cpu->registers[reg] = instruction[1];
+  //debugPrint("Adding %d to %d", cpu->registers[reg], instruction[1], cpu->registers[reg]);
+  cpu->registers[reg] += instruction[1];
+  //debugPrint(" = %d\n", cpu->registers[reg]);
 }
 
 void store(uint8_t* instruction, Chip8State *cpu)
@@ -338,6 +383,7 @@ void xor(uint8_t* instruction, Chip8State *cpu)
 {
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
+  cpu->registers[reg1] ^= cpu->registers[reg2];
 }
 
 void add(uint8_t* instruction, Chip8State *cpu)
@@ -368,6 +414,7 @@ void shiftRight(uint8_t* instruction, Chip8State *cpu)
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
   lsb = cpu->registers[reg2] & 0x01; 
+  cpu->registers[15] = lsb;
   cpu->registers[reg1] = cpu->registers[reg2] >> 1;
 }
 
@@ -382,19 +429,20 @@ void subYX(uint8_t* instruction, Chip8State *cpu)
 void skipNeq(uint8_t* instruction, Chip8State *cpu)
 {
   int reg1 = getLowerNibble(instruction[0]);
-  int reg2 = getLowerNibble(instruction[1]);
+  int reg2 = getUpperNibble(instruction[1]);
   if(cpu->registers[reg1] != cpu->registers[reg2])
   {
-    cpu->PC++;
+    cpu->PC += 2;
   }
 }
 
 void shiftLeft(uint8_t* instruction, Chip8State *cpu)
 { 
-  int lsb;
+  int msb;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  lsb = cpu->registers[reg2] & 0x80; 
+  msb = cpu->registers[reg2] & 0x80;
+  cpu->registers[15] = msb;
   cpu->registers[reg1] = cpu->registers[reg2] << 1;
 }
 
@@ -420,10 +468,11 @@ void setRand(uint8_t* instruction, Chip8State *cpu)
 void drawSprite(uint8_t* instruction, Chip8State *cpu)
 {
   uint16_t spriteAddr = cpu->VI;
-  uint8_t xCoord = getLowerNibble(instruction[0]) % 64;
-  uint8_t yCoord = getUpperNibble(instruction[1]) % 32;
+  uint8_t xCoord = cpu->registers[getLowerNibble(instruction[0])];
+  uint8_t yCoord = cpu->registers[getUpperNibble(instruction[1])];
   int numBytes = getLowerNibble(instruction[1]);
   uint8_t spritePixels[8];
+
 
   cpu->registers[15] = 0x00;
 
@@ -431,9 +480,9 @@ void drawSprite(uint8_t* instruction, Chip8State *cpu)
   {
     uint8_t spriteByte = cpu->memory[spriteAddr + i];
     uint8_t currentBit;
-    for(int j = 7; i >= 0; j--)
+    for(int j = 7; j >= 0; j--)
     {
-      currentBit = spriteByte & 0x01;
+      currentBit = spriteByte & 1;
       if(currentBit == 1)
       {
         spritePixels[j] = 1;
@@ -441,18 +490,14 @@ void drawSprite(uint8_t* instruction, Chip8State *cpu)
       {
         spritePixels[j] = 0;
       }
-      currentBit >>= 1;
+      spriteByte >>= 1;
     }
 
     for(int j = 0; j < 8; j++)
     {
-      int x = xCoord + j;
+      int x = (xCoord + j)%64;
       int y = yCoord + i;
-      
-      if(x > 0x3F)
-      {
-        continue;
-      }
+
       if(y > 0x1F)
       {
         continue;
@@ -475,12 +520,20 @@ void drawSprite(uint8_t* instruction, Chip8State *cpu)
 
 void skipIfKey(uint8_t* instruction, Chip8State *cpu)
 {
- // TODO: Implement
+  int reg = getLowerNibble(instruction[0]);
+  if(numpad[cpu->registers[reg]])
+  {
+    cpu->PC += 2;
+  }
 }
 
 void skipIfNotKey(uint8_t* instruction, Chip8State *cpu) 
 {
-  cpu->PC++; // TODO: Finish implementing
+  int reg = getLowerNibble(instruction[0]);
+  if(!numpad[cpu->registers[reg]])
+  {
+    cpu->PC += 2; 
+  }
 }
 
 void storeDT(uint8_t* instruction, Chip8State *cpu)
@@ -516,41 +569,45 @@ void addI(uint8_t* instruction, Chip8State *cpu)
 void setISpriteAddr(uint8_t* instruction, Chip8State *cpu)
 {
   int targetRegister = getLowerNibble(instruction[0]);
-  cpu->VI = cpu->registers[targetRegister];
+  cpu->VI = cpu->registers[targetRegister]*5;
 }
 
 void storeBCD(uint8_t* instruction, Chip8State *cpu)
 {
   int targetRegister = getLowerNibble(instruction[0]);
+  uint8_t hundreds = 0;
+  uint8_t tens = 0;
+  uint8_t ones = 0;
   uint8_t value = cpu->registers[targetRegister];
-  uint8_t BCDValue = 0;
-  for(int i = 0; i < 8; i++)
-  {
-    BCDValue | (value & 0x01);
-    BCDValue <<= 1;
-    value >>= 1;
-  }
-  cpu->memory[cpu->VI] = BCDValue;
-  cpu->memory[cpu->VI] = BCDValue;
-  cpu->memory[cpu->VI] = BCDValue;
+  hundreds = value/100;
+  value %= 100; 
+  tens = value/10;
+  value %= 10; 
+  ones = value;
+
+  cpu->memory[cpu->VI] = hundreds;
+  cpu->memory[cpu->VI+1] = tens;
+  cpu->memory[cpu->VI+2] = ones;
 }
 
 void storeRegs(uint8_t* instruction, Chip8State *cpu)
 {
   int VX = getLowerNibble(instruction[0]); 
-  for(int i = 0; i < VX; i++)
+  for(int i = 0; i <= VX; i++)
   {
     cpu->memory[cpu->VI + i] = cpu->registers[i];
   }
+  cpu->VI += VX + 1;
 }
 
 void loadRegs(uint8_t* instruction, Chip8State *cpu)
 {
   int VX = getLowerNibble(instruction[0]);
-  for(int i = 0; i < VX; i++)
+  for(int i = 0; i <= VX; i++)
   {
     cpu->registers[i] = cpu->memory[cpu->VI + i];
   }
+  cpu->VI += VX + 1;
 }
 
 int run(Chip8State *cpu)
@@ -565,16 +622,29 @@ int run(Chip8State *cpu)
     skipIfKey, skipIfNotKey, storeDT, waitKey,
     setDT, setST, addI, setISpriteAddr,
     storeBCD, storeRegs, loadRegs};
+  static clock_t prevTime;
 
-
-  initialize(cpu);
-  bool running = true;
-
-  while(running)
+  uint8_t* nextInstruction = &cpu->memory[cpu->PC];
+  int nextOp = decodeInstruction(nextInstruction);
+  //debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
+  if(nextOp == INVALID_OP || nextOp == EXEC_ASM)
   {
-    uint8_t* nextInstruction = &cpu->memory[cpu->PC];
+    return -1;
+  } else
+  {
     opFuncs[decodeInstruction(nextInstruction)](nextInstruction, cpu);
     cpu->PC += 2;
   }
+
+  if((double)(clock() - prevTime)/CLOCKS_PER_SEC*1000 > 16)
+  {
+    if(cpu->DT > 0)
+    {
+      cpu->DT -= 1;
+    }
+    prevTime = clock();
+  }
+
+  return 0;
 
 }
