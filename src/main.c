@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
+#include <time.h>
 #include "interpret.h"
 #include "screen.h"
 
@@ -67,6 +68,9 @@ int main(int argc, char* argv[])
 
   Chip8State state;
   initialize(&state);
+  clock_t renderTime = clock();
+  clock_t cpuClock = clock();
+  srand(clock());
 
   if(argc < 2)
   {
@@ -106,13 +110,20 @@ int main(int argc, char* argv[])
       }
     }
     parseKeyboard();
-    if(run(&state) == -1)
+    if((double)(clock() - cpuClock)/CLOCKS_PER_SEC*1000 > 2)
     {
-      printf("Invalid opcode, exiting.\n");
-      return -1;
+      if(run(&state) == -1)
+      {
+        printf("Invalid opcode, exiting.\n");
+        return -1;
+      }
+      cpuClock = clock();
     }
-    drawScreen(state.screen);
-    //SDL_Delay(1);
+    if((double)(clock() - renderTime)/CLOCKS_PER_SEC*1000 > 16)
+    {
+      drawScreen(state.screen);
+      renderTime = clock();
+    }
   }
   cleanupSDL();
 
