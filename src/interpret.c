@@ -410,19 +410,19 @@ void subXY(uint8_t* instruction, Chip8State *cpu)
 
 void shiftRight(uint8_t* instruction, Chip8State *cpu)
 {
-  int lsb;
+  uint8_t lsb;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  lsb = cpu->registers[reg2] & 0x01; 
+  lsb = cpu->registers[reg1] & 0x01; 
   cpu->registers[15] = lsb;
-  cpu->registers[reg1] = cpu->registers[reg2] >> 1;
+  cpu->registers[reg1] = cpu->registers[reg1] >> 1;
 }
 
 void subYX(uint8_t* instruction, Chip8State *cpu)
 {
   int underflowFlag;
   int reg1 = getLowerNibble(instruction[0]);
-  int reg2 = getLowerNibble(instruction[1]);
+  int reg2 = getUpperNibble(instruction[1]);
   cpu->registers[15] = detectUnderflow(cpu->registers[reg2], cpu->registers[reg1]);
   cpu->registers[reg1] = cpu->registers[reg2] - cpu->registers[reg1];
 }
@@ -438,12 +438,12 @@ void skipNeq(uint8_t* instruction, Chip8State *cpu)
 
 void shiftLeft(uint8_t* instruction, Chip8State *cpu)
 { 
-  int msb;
+  uint8_t msb;
   int reg1 = getLowerNibble(instruction[0]);
   int reg2 = getUpperNibble(instruction[1]);
-  msb = cpu->registers[reg2] & 0x80;
+  msb = (cpu->registers[reg1] & 0x80) >> 7;
   cpu->registers[15] = msb;
-  cpu->registers[reg1] = cpu->registers[reg2] << 1;
+  cpu->registers[reg1] = cpu->registers[reg1] << 1;
 }
 
 void loadI_Imm(uint8_t* instruction, Chip8State *cpu)
@@ -597,7 +597,7 @@ void storeRegs(uint8_t* instruction, Chip8State *cpu)
   {
     cpu->memory[cpu->VI + i] = cpu->registers[i];
   }
-  cpu->VI += VX + 1;
+  //cpu->VI += VX + 1;
 }
 
 void loadRegs(uint8_t* instruction, Chip8State *cpu)
@@ -607,7 +607,7 @@ void loadRegs(uint8_t* instruction, Chip8State *cpu)
   {
     cpu->registers[i] = cpu->memory[cpu->VI + i];
   }
-  cpu->VI += VX + 1;
+  //cpu->VI += VX + 1;
 }
 
 int run(Chip8State *cpu)
@@ -626,7 +626,7 @@ int run(Chip8State *cpu)
 
   uint8_t* nextInstruction = &cpu->memory[cpu->PC];
   int nextOp = decodeInstruction(nextInstruction);
-  //debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
+  debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
   if(nextOp == INVALID_OP || nextOp == EXEC_ASM)
   {
     return -1;
