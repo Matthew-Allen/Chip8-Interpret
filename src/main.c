@@ -2,6 +2,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include <time.h>
+#include "settings.h"
 #include "interpret.h"
 #include "screen.h"
 
@@ -37,10 +38,6 @@ void parseKeyboard()
   }
 
 }
-
-
-
-
 
 int loadProgram(Chip8State* cpu, char* path)
 {
@@ -78,11 +75,43 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  for(int i = 1; i < argc-1; i++)
+  // Set default clock speed and maximum framerate
+  setFramerate(60);
+  setFrequency(500);
+
+  for(int i = 1; i < argc-1; i++) // Replace with open-source CLI argument parsing lib at first convenience.
   {
     if(strcmp(argv[i], "-d") == 0)
     {
       setDebug(true);
+    }
+
+    if(strcmp(argv[i], "-f") == 0)
+    {
+      int framerate;
+      if(i + 1 < argc-1)
+      {
+        sscanf(argv[i+1], "%d", &framerate);
+        setFramerate(framerate);
+        printf("Setting framerate to %d.\n", framerate);
+      } else
+      {
+        printf("-f predicate requires numerical argument.\n");
+      }
+    }
+
+    if(strcmp(argv[i], "-h") == 0)
+    {
+      int frequency;
+      if(i + 1 < argc-1)
+      {
+        sscanf(argv[i+1], "%d", &frequency);
+        setFrequency(frequency);
+        printf("Setting clock frequency to %d Hertz.\n", frequency);
+      } else
+      {
+        printf("-h predicate requires numerical argument.\n");
+      }
     }
   }
   char* filename = argv[argc-1];
@@ -110,7 +139,7 @@ int main(int argc, char* argv[])
       }
     }
     parseKeyboard();
-    if((double)(clock() - cpuClock)/CLOCKS_PER_SEC*1000 > 2)
+    if((double)(clock() - cpuClock)/CLOCKS_PER_SEC*1000 > (1000/getFrequency()))
     {
       if(run(&state) == -1)
       {
@@ -119,7 +148,7 @@ int main(int argc, char* argv[])
       }
       cpuClock = clock();
     }
-    if((double)(clock() - renderTime)/CLOCKS_PER_SEC*1000 > 16)
+    if((double)(clock() - renderTime)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
     {
       drawScreen(state.screen);
       renderTime = clock();

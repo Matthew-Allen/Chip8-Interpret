@@ -1,7 +1,7 @@
 #include "interpret.h"
+#include "settings.h"
 
 typedef void (*jumpTable)(uint8_t* instruction, Chip8State *cpu);
-static bool debugOn;
 
 static bool numpad[16];
 
@@ -22,25 +22,11 @@ void debugPrint(const char * format,...)
 {
   va_list args;
   va_start( args, format);
-  if(debugOn)
+  if(getDebugMode())
   {
     vprintf(format, args);
   }
   va_end(args);
-}
-
-void setDebug(bool value)
-{
-  static bool set = false;
-  if(!set)
-  {
-    debugOn = value;
-    set = true;
-    debugPrint("Debug mode set to ON.\n");
-  } else
-  {
-    debugPrint("Unable to set debug mode: Already set.\n");
-  }
 }
 
 void initialize(Chip8State* cpu)
