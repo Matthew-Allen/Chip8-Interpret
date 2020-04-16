@@ -97,9 +97,10 @@ void createColorRect()
     rectData.shaderProgram = defaultShaderProgram;
 
 
-    //Prevent potential further modidefaultRectVAOfications of this vertex array
+    //Prevent potential further modifications of this vertex array
     glBindVertexArray(0);
 }
+
 // Generate orthographic projection matrix for a screen with the given pixel dimensions
 void generateOrthoMatrix(float width, float height, float returnMatrix[][4])
 {
@@ -249,7 +250,6 @@ int initScreen()
     return 0;
 }
 
-// TODO: Needs to be rewritten to use OpenGL
 void drawPixel(int x, int y)
 {
   SDL_Window *window = SDL_GL_GetCurrentWindow();
@@ -265,7 +265,6 @@ void drawPixel(int x, int y)
   drawRect(x*width, y*height, width, height, color);
 }
 
-// TODO: Also needs to be rewritten for OpenGL
 void drawScreen(uint8_t screen[][32])
 {
   for(int i = 0; i < 64; i++)
@@ -301,9 +300,9 @@ void renderFrame(uint8_t screen[][32])
 	SDL_GL_SwapWindow(SDL_GL_GetCurrentWindow());
 }
 
-// TODO: Add opengl and imgui specific cleanup here
 void cleanupSDL()
 {
+  SDL_GL_DeleteContext(SDL_GL_GetCurrentContext);
   SDL_DestroyWindow(SDL_GL_GetCurrentWindow());
   SDL_Quit();
 }
