@@ -1,98 +1,53 @@
-ifeq ($(OS),Windows_NT)
-  ifeq ($(shell uname -s),) # not in a bash-like shell
-	CLEANUP = del /F /Q
-	MKDIR = mkdir
-  else # in a bash-like shell, like msys
-	CLEANUP = rm -f
-	MKDIR = mkdir -p
-  endif
-	TARGET_EXTENSION=.exe
-else
-	CLEANUP = rm -f
-	MKDIR = mkdir -p
-	TARGET_EXTENSION=out
-endif
+SRCDIR = src/
+INCLDIR = include/
+GL3WDIR = include/GL/
+BUILDDIR = build/
+ODIR = $(BUILDDIR)objs/
+CIMGUIDIR = extern/cimgui/
+IMGUIDIR = extern/cimgui/imgui/
+CIMGUI_LIB = cimgui.so
+
+CSRC := $(wildcard $(SRCDIR)*.c) \
+	$(wildcard $(INCLDIR)*.c) \
+	$(wildcard $(GL3WDIR)*.c)
+CPPSRC := $(wildcard $(INCLDIR)*.cpp)
+OBJS := $(notdir $(CPPSRC:.cpp=.o))
+OBJS += $(notdir $(CSRC:.c=.o))
+OBJS := $(addprefix $(ODIR),$(OBJS))
+BUILDC = gcc -c -lSDL2 -lGL -ldl `sdl2-config --cflags`
+BUILDCPP = g++ -c -lSDL2 -lGL -ldl `sdl2-config --cflags`
+LINK = g++ -lSDL2 -lGL -ldl $(CIMGUI_LIB)
+CFLAGS = -g -DIMGUI_IMPL_API="extern" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(SRCDIR) -I$(GL3WDIR) -I$(INCLDIR) -I$(CIMGUIDIR) -I$(IMGUIDIR)
+CPPFLAGS = -g -DIMGUI_IMPL_API="extern \"C\"" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(SRCDIR) -I$(GL3WDIR) -I$(INCLDIR) -I$(CIMGUIDIR) -I$(IMGUIDIR)
 
 .PHONY: build
 .PHONY: clean
-.PHONY: test
 
-PATHU = unity/src/
-PATHS = src/
-PATHT = test/
-PATHB = build/
-PATHD = build/depends/
-PATHO = build/objs/
-PATHR = build/results/
+build: cimgui.so $(BUILDDIR)Chip8-Interpret.out
 
-BUILD_PATHS = $(PATHB) $(PATHD) $(PATHO) $(PATHR)
-
-SRC = $(wildcard $(PATHS)*.c)
-SRCT = $(wildcard $(PATHT)*.c)
-
-COMPILE=gcc -c -g
-LINK=gcc 
-LINKFLAGS= -lSDL2 -lSDL2main -lSDL2_ttf
-DEPEND=gcc -MM -MG -MF
-CFLAGS=-I. -I$(PATHU) -I$(PATHS) -ISDL2 -DTEST
-
-RESULTS = $(patsubst $(PATHT)Test%.c,$(PATHR)Test%.txt,$(SRCT) )
-OBJECTS = $(patsubst $(PATHS)%.c,$(PATHO)%.o,$(SRC) )
-
-PASSED = `grep -s PASS $(PATHR)*.txt`
-FAIL = `grep -s FAIL $(PATHR)*.txt`
-IGNORE = `grep -s IGNORE $(PATHR)*.txt`
-
-build: $(BUILD_PATHS) $(PATHB)chip8-interpret.out
-
-$(PATHB)chip8-interpret.out: $(OBJECTS)
-	$(LINK) -o $@ $^ $(LINKFLAGS)
-
-test: $(BUILD_PATHS) $(RESULTS)
-	@echo "-----------------------\nIGNORES:\n-----------------------"
-	@echo "$(IGNORE)"
-	@echo "-----------------------\nFAILURES:\n-----------------------"
-	@echo "$(FAIL)"
-	@echo "-----------------------\nPASSED:\n-----------------------"
-	@echo "$(PASSED)"
-	@echo "\nDONE"
-
-$(PATHR)%.txt: $(PATHB)%.$(TARGET_EXTENSION)
-	-./$< > $@ 2>&1
-
-$(PATHB)Test%.$(TARGET_EXTENSION): $(PATHO)Test%.o $(PATHO)%.o $(PATHU)unity.o #$(PATHD)Test%.d
+$(BUILDDIR)Chip8-Interpret.out: $(OBJS)
 	$(LINK) -o $@ $^
 
-$(PATHO)%.o:: $(PATHT)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+$(ODIR)%.o:: $(SRCDIR)%.c
+	$(BUILDC) $(CFLAGS) $^ -o $@
 
-$(PATHO)%.o:: $(PATHS)%.c
-	$(COMPILE) $(CFLAGS) $< -o $@
+$(ODIR)%.o:: $(INCLDIR)%.c
+	$(BUILDPP) $(CFLAGS) $^ -o $@
 
-$(PATHO)%.o:: $(PATHU)%.c $(PATHU)%.h
-	$(COMPILE) $(CFLAGS) $< -o $@
+$(ODIR)%.o:: $(SRCDIR)%.cpp
+	$(BUILDC) $(CPPFLAGS) $^ -o $@
 
-$(PATHD)%.d:: $(PATHT)%.c
-	$(DEPEND) $@ $<
+$(ODIR)%.o:: $(INCLDIR)%.cpp
+	$(BUILDCPP) $(CPPFLAGS) $^ -o $@
 
-$(PATHB):
-	$(MKDIR) $(PATHB)
+$(ODIR)%.o:: $(GL3WDIR)%.c
+	$(BUILDC) $(CFLAGS) $^ -o $@
 
-$(PATHD):
-	$(MKDIR) $(PATHD)
-
-$(PATHO):
-	$(MKDIR) $(PATHO)
-
-$(PATHR):
-	$(MKDIR) $(PATHR)
+cimgui.so:
+	make -C extern/cimgui
+	cp extern/cimgui/$(CIMGUI_LIB) ./
 
 clean:
-	$(CLEANUP) $(PATHO)*.o
-	$(CLEANUP) $(PATHB)*.$(TARGET_EXTENSION)
-	$(CLEANUP) $(PATHR)*.txt
+	rm -f $(ODIR)*.o
+	rm -f $(BUILDDIR)*.out
 
-.PRECIOUS: $(PATHB)Test%.$(TARGET_EXTENSION)
-.PRECIOUS: $(PATHD)%.d
-.PRECIOUS: $(PATHO)%.o
-.PRECIOUS: $(PATHR)%.txt

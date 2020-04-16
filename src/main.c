@@ -1,5 +1,5 @@
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include <time.h>
 #include "settings.h"
@@ -8,36 +8,6 @@
 
 #define MAX_PROGRAM_SIZE ( PROGRAM_MEMORY_END - PROGRAM_MEMORY_START )
 
-void parseKeyboard()
-{
-  const uint8_t* stateArray = SDL_GetKeyboardState(NULL);
-  clearNumpad();
-  if(stateArray[SDL_SCANCODE_Q])
-  {
-    setNumpadKey(4);
-  }
-  if(stateArray[SDL_SCANCODE_W])
-  {
-    setNumpadKey(5);
-  }
-  if(stateArray[SDL_SCANCODE_E])
-  {
-    setNumpadKey(6);
-  }
-  if(stateArray[SDL_SCANCODE_A])
-  {
-    setNumpadKey(7);
-  }
-  if(stateArray[SDL_SCANCODE_S])
-  {
-    setNumpadKey(8);
-  }
-  if(stateArray[SDL_SCANCODE_D])
-  {
-    setNumpadKey(9);
-  }
-
-}
 
 int loadProgram(Chip8State* cpu, char* path)
 {
@@ -65,8 +35,8 @@ int main(int argc, char* argv[])
 
   Chip8State state;
   initialize(&state);
-  clock_t renderTime = clock();
   clock_t cpuClock = clock();
+  clock_t renderClock = clock();
   srand(clock());
 
   if(argc < 2)
@@ -76,8 +46,8 @@ int main(int argc, char* argv[])
   }
 
   // Set default clock speed and maximum framerate
-  setFramerate(60);
   setFrequency(500);
+  setFramerate(60);
 
   for(int i = 1; i < argc-1; i++) // Replace with open-source CLI argument parsing lib at first convenience.
   {
@@ -126,19 +96,9 @@ int main(int argc, char* argv[])
   }
 
   bool running = true;
-  SDL_Event event;
   while(running)
   {
-    while(SDL_PollEvent(&event))
-    {
-      switch (event.type)
-      {
-        case SDL_QUIT:
-          running = false;
-          break;
-      }
-    }
-    parseKeyboard();
+    pollEvents();
     if((double)(clock() - cpuClock)/CLOCKS_PER_SEC*1000 > (1000/getFrequency()))
     {
       if(run(&state) == -1)
@@ -148,10 +108,10 @@ int main(int argc, char* argv[])
       }
       cpuClock = clock();
     }
-    if((double)(clock() - renderTime)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
+    if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
     {
-      drawScreen(state.screen);
-      renderTime = clock();
+        renderClock = clock();
+        renderFrame(state.screen);
     }
   }
   cleanupSDL();

@@ -1,3 +1,6 @@
 .syntastic-includes
 *.o
 *.d
+*.out
+*.ch8
+*.so
