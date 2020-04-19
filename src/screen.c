@@ -1,12 +1,26 @@
 #include "screen.h"
-#define DEFAULT_WIDTH 640
-#define DEFAULT_HEIGHT 480
+#define DEFAULT_WIDTH 800
+#define DEFAULT_HEIGHT 600
+
+void recomputeTransformMatrices();
 
 struct colorRect
 {
     unsigned int shaderProgram;
     unsigned int glVAO;
 };
+
+void print4dmatrix(float matrix[][4])
+{
+    for(int i = 0; i < 4; i++)
+    {
+        for(int j = 0; j < 4; j++)
+        {
+            printf("%f, ",matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
 
 const char* vertexShaderSource = "#version 330 core\n"
 	"layout (location = 0) in vec3 aPos;\n"
@@ -26,6 +40,8 @@ const char* fragmentShaderSource = "#version 330 core\n"
     "}\n\0";  
 
 static struct colorRect rectData;
+static float orthoMatrix[4][4];
+static float (transformMatrices[64][32])[4][4];
 
 void mult4dmatrix(float matA[][4], float matB[][4], float matC[][4])
 {
@@ -46,6 +62,8 @@ void mult4dmatrix(float matA[][4], float matB[][4], float matC[][4])
 
 void createColorRect()
 {
+
+    recomputeTransformMatrices();
 
     //Compile shader codes
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -114,13 +132,53 @@ void generateOrthoMatrix(float width, float height, float returnMatrix[][4])
     memcpy(returnMatrix, tempMatrix, sizeof(tempMatrix));
 }
 
+void createScaleMatrix(float xFactor, float yFactor, float matrix[][4])
+{
+    float scale[4][4] = {
+        (float)xFactor, 0.0f, 0.0f, 0.0f,
+        0.0f, (float)yFactor, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    memcpy(matrix, scale, sizeof(scale));
+}
+
+void translateMatrix(float x, float y, float matrix[][4])
+{
+	float translate[4][4] = {
+        1.0f, 0.0f, 0.0f, (float)x,
+        0.0f, 1.0f, 0.0f, (float)y,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    mult4dmatrix(translate, matrix, matrix);
+}
+
+
+void recomputeTransformMatrices()
+{
+    int winX;
+    int winY;
+    SDL_GetWindowSize(SDL_GL_GetCurrentWindow(), &winX, &winY);
+    generateOrthoMatrix(winX, winY, orthoMatrix);
+    printf("WindowDims: %d,%d\n", winX, winY);
+    int width = winX/64;
+    int height = winY/32;
+    float* currentMatrix;
+    //print4dmatrix(orthoMatrix);
+    for(int i = 0; i < 64; i++)
+    {
+        for(int j = 0; j < 32; j++)
+        {
+            createScaleMatrix(width/2, height/2, transformMatrices[i][j]);
+            translateMatrix(i*width + width/2, j*height + height/2, transformMatrices[i][j]);
+            mult4dmatrix(orthoMatrix, transformMatrices[i][j], transformMatrices[i][j]);
+        }
+    }
+
+}
 void drawRect(int x, int y, int width, int height, ImVec4 color)
 {
-    float orthoMatrix[4][4];
-    SDL_DisplayMode windowDims;
-    SDL_GetWindowDisplayMode(SDL_GL_GetCurrentWindow(), &windowDims);
-    generateOrthoMatrix(windowDims.w, windowDims.h, orthoMatrix);
-
     float scale[4][4] = {
         (float)width/2, 0.0f, 0.0f, 0.0f,
         0.0f, (float)height/2, 0.0f, 0.0f,
@@ -142,6 +200,21 @@ void drawRect(int x, int y, int width, int height, ImVec4 color)
     glUniform4f(colorLoc, color.x, color.y, color.z, color.w);
     glBindVertexArray(rectData.glVAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void drawPixel(int x, int y)
+{
+  SDL_Window *window = SDL_GL_GetCurrentWindow();
+  SDL_DisplayMode dimensions;
+  SDL_GetWindowDisplayMode(window, &dimensions);
+  int width = dimensions.w/64;
+  int height = dimensions.h/32;
+  ImVec4 color;
+  color.x = 1.0f;
+  color.y = 1.0f;
+  color.z = 1.0f;
+  color.w = 1.0f;
+  drawRect(x*width, y*height, width, height, color);
 }
 
 void parseKeyboard()
@@ -185,6 +258,11 @@ bool pollEvents()
         case SDL_QUIT:
             return false;
             break;
+        case SDL_WINDOWEVENT:
+            if(event.window.event == SDL_WINDOWEVENT_RESIZED)
+            {
+                recomputeTransformMatrices();
+            }
       }
     }
     parseKeyboard();
@@ -226,7 +304,7 @@ int initScreen()
     }
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(0);
 
     bool err = gl3wInit() != 0;
 
@@ -250,33 +328,25 @@ int initScreen()
     return 0;
 }
 
-void drawPixel(int x, int y)
+void drawScreen(uint8_t screen[][32], ImVec4 color)
 {
-  SDL_Window *window = SDL_GL_GetCurrentWindow();
-  SDL_DisplayMode dimensions;
-  SDL_GetWindowDisplayMode(window, &dimensions);
-  int width = dimensions.w/64;
-  int height = dimensions.h/32;
-  ImVec4 color;
-  color.x = 1.0f;
-  color.y = 1.0f;
-  color.z = 1.0f;
-  color.w = 1.0f;
-  drawRect(x*width, y*height, width, height, color);
-}
-
-void drawScreen(uint8_t screen[][32])
-{
-  for(int i = 0; i < 64; i++)
-  {
-    for(int j = 0; j < 32; j++)
+    glUseProgram(rectData.shaderProgram);
+    for(int i = 0; i < 64; i++)
     {
-      if(screen[i][j] == 1)
-      {
-        drawPixel(i,j);
-      }
+        for(int j = 0; j < 32; j++)
+        {
+            if(screen[i][j] == 1)
+            {
+                unsigned int transformLoc = glGetUniformLocation(rectData.shaderProgram, "transform");
+                glUniformMatrix4fv(transformLoc, 1, GL_TRUE, (float*)transformMatrices[i][j]);
+                unsigned int colorLoc = glGetUniformLocation(rectData.shaderProgram, "inputColor");
+                glUniform4f(colorLoc, color.x, color.y, color.z, color.w);
+                glBindVertexArray(rectData.glVAO);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        }
     }
-  }
+    glBindVertexArray(0);
 }
 
 void renderFrame(uint8_t screen[][32])
@@ -290,19 +360,24 @@ void renderFrame(uint8_t screen[][32])
     clearColor.y = 0.0f;
     clearColor.z = 0.0f;
     clearColor.w = 1.00f;
+    ImVec4 pixelColor;
+    pixelColor.x = 1.0f;
+    pixelColor.y = 1.0f;
+    pixelColor.z = 1.0f;
+    pixelColor.w = 1.0f;
 	igRender();
 	//SDL_GL_MakeCurrent(SDL_GL_GetCurrentWindow(), gl_context);
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 	glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 	glClear(GL_COLOR_BUFFER_BIT);
-    drawScreen(screen);
+    drawScreen(screen, pixelColor);
 	ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
 	SDL_GL_SwapWindow(SDL_GL_GetCurrentWindow());
 }
 
 void cleanupSDL()
 {
-  SDL_GL_DeleteContext(SDL_GL_GetCurrentContext);
+  //SDL_GL_DeleteContext(SDL_GL_GetCurrentContext);
   SDL_DestroyWindow(SDL_GL_GetCurrentWindow());
   SDL_Quit();
 }

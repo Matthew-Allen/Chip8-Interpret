@@ -8,7 +8,7 @@
 #include <SDL2/SDL.h>
 #include "interpret.h"
 int initScreen();
-void drawScreen(uint8_t screen[][32]);
+void drawScreen(uint8_t screen[][32], ImVec4 color);
 void cleanupSDL();
 void renderFrame();
 bool pollEvents();

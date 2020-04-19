@@ -2,6 +2,7 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 #include <time.h>
+#include <unistd.h>
 #include "settings.h"
 #include "interpret.h"
 #include "screen.h"
@@ -35,6 +36,9 @@ int main(int argc, char* argv[])
 
   Chip8State state;
   initialize(&state);
+  struct timespec sleepTime;
+  sleepTime.tv_sec = 0;
+  sleepTime.tv_nsec = 1L;
   clock_t cpuClock = clock();
   clock_t renderClock = clock();
   srand(clock());
@@ -46,7 +50,7 @@ int main(int argc, char* argv[])
   }
 
   // Set default clock speed and maximum framerate
-  setFrequency(500);
+  setFrequency(1000);
   setFramerate(60);
 
   for(int i = 1; i < argc-1; i++) // Replace with open-source CLI argument parsing lib at first convenience.
@@ -98,8 +102,8 @@ int main(int argc, char* argv[])
   bool running = true;
   while(running)
   {
-    pollEvents();
-    if((double)(clock() - cpuClock)/CLOCKS_PER_SEC*1000 > (1000/getFrequency()))
+    running = pollEvents();
+    if(((double)(clock() - cpuClock)/CLOCKS_PER_SEC)*1000 > (1000/getFrequency()))
     {
       if(run(&state) == -1)
       {
@@ -108,6 +112,7 @@ int main(int argc, char* argv[])
       }
       cpuClock = clock();
     }
+
     if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
     {
         renderClock = clock();
