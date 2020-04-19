@@ -10,6 +10,35 @@ struct colorRect
     unsigned int glVAO;
 };
 
+void showUI(bool *p_open)
+{
+    static bool first = true;
+    static int freqReturn;
+    if(first)
+    {
+        freqReturn = getFrequency();
+        first = false;
+    }
+    ImVec2 buttonSize;
+    buttonSize.x = 0;
+    buttonSize.y = 0;
+    bool freqCollapse = true;
+    bool displayCollapse = true;
+    igBegin("Settings", p_open, 0);
+    if(igCollapsingHeaderBoolPtr("Frequency", &displayCollapse, 0))
+    {
+        
+        //igSliderInt("CPU Frequency", &freqReturn, 0, 1000, " %dHz");
+        igInputInt("CPU Frequency", &freqReturn, 10, 100, ImGuiInputTextFlags_CharsDecimal);
+    }
+    if(igButton("Confirm Settings", buttonSize))
+    {
+        setFrequency(freqReturn);
+    }
+    igEnd();
+}
+
+
 void print4dmatrix(float matrix[][4])
 {
     for(int i = 0; i < 4; i++)
@@ -253,6 +282,8 @@ bool pollEvents()
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
+
+      ImGui_ImplSDL2_ProcessEvent(&event);
       switch (event.type)
       {
         case SDL_QUIT:
@@ -263,6 +294,12 @@ bool pollEvents()
             {
                 recomputeTransformMatrices();
             }
+        case SDL_KEYDOWN:
+            if (event.key.keysym.sym == SDLK_ESCAPE)
+            {
+                *getGUIPtr() = true;
+            }
+            break;
       }
     }
     parseKeyboard();
@@ -365,6 +402,10 @@ void renderFrame(uint8_t screen[][32])
     pixelColor.y = 1.0f;
     pixelColor.z = 1.0f;
     pixelColor.w = 1.0f;
+    if(*getGUIPtr())
+    {
+        showUI(getGUIPtr());
+    }
 	igRender();
 	//SDL_GL_MakeCurrent(SDL_GL_GetCurrentWindow(), gl_context);
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);

@@ -31,3 +31,8 @@ int getFramerate()
 {
   return programSettings.max_framerate;
 }
+
+bool *getGUIPtr()
+{
+    return &programSettings.showGUI;
+}

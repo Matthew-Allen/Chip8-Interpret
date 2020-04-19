@@ -7,6 +7,7 @@ typedef struct runtime_settings
   bool debug;
   int max_frequency;
   int max_framerate;
+  bool showGUI;
 } settings;
 
 void setDebug(bool debugSetting);
@@ -21,4 +22,5 @@ int getFrequency();
 
 int getFramerate();
 
+bool *getGUIPtr();
 #endif

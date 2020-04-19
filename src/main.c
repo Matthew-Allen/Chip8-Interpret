@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
   }
 
   // Set default clock speed and maximum framerate
-  setFrequency(1000);
+  setFrequency(500);
   setFramerate(60);
 
   for(int i = 1; i < argc-1; i++) // Replace with open-source CLI argument parsing lib at first convenience.
@@ -102,22 +102,24 @@ int main(int argc, char* argv[])
   bool running = true;
   while(running)
   {
-    running = pollEvents();
-    if(((double)(clock() - cpuClock)/CLOCKS_PER_SEC)*1000 > (1000/getFrequency()))
-    {
-      if(run(&state) == -1)
-      {
-        printf("Invalid opcode, exiting.\n");
-        return -1;
-      }
-      cpuClock = clock();
-    }
 
-    if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
-    {
-        renderClock = clock();
-        renderFrame(state.screen);
-    }
+      running = pollEvents();
+      double timediff = ((double)(clock() - cpuClock)/CLOCKS_PER_SEC)*1000;
+      if(timediff > (1000/(double)getFrequency()))
+      {
+          if(run(&state) == -1)
+          {
+              printf("Invalid opcode, exiting.\n");
+              return -1;
+          }
+          cpuClock = clock();
+      }
+
+      if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
+      {
+          renderClock = clock();
+          renderFrame(state.screen);
+      }
   }
   cleanupSDL();
 
