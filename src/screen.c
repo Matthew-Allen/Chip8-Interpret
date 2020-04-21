@@ -10,26 +10,35 @@ struct colorRect
     unsigned int glVAO;
 };
 
+static struct colorRect rectData;
+static float orthoMatrix[4][4];
+static float (transformMatrices[64][32])[4][4];
+static ImVec4 clearColor;
+static ImVec4 pixelColor;
+
 void showUI(bool *p_open)
 {
     static bool first = true;
     static int freqReturn;
-    if(first)
-    {
-        freqReturn = getFrequency();
-        first = false;
-    }
     ImVec2 buttonSize;
     buttonSize.x = 0;
     buttonSize.y = 0;
     bool freqCollapse = true;
     bool displayCollapse = true;
-    igBegin("Settings", p_open, 0);
-    if(igCollapsingHeaderBoolPtr("Frequency", &displayCollapse, 0))
+    if(first)
     {
-        
-        //igSliderInt("CPU Frequency", &freqReturn, 0, 1000, " %dHz");
+        freqReturn = getFrequency();
+        first = false;
+    }
+    igBegin("Settings", p_open, 0);
+    if(igCollapsingHeaderBoolPtr("Frequency", &freqCollapse, 0))
+    {
         igInputInt("CPU Frequency", &freqReturn, 10, 100, ImGuiInputTextFlags_CharsDecimal);
+    }
+    if(igCollapsingHeaderBoolPtr("Display", &displayCollapse, 0))
+    {
+        igColorEdit3("Background color.", (float*)&clearColor, 0);
+        igColorEdit3("Pixel color.", (float*)&pixelColor, 0);
     }
     if(igButton("Confirm Settings", buttonSize))
     {
@@ -67,10 +76,6 @@ const char* fragmentShaderSource = "#version 330 core\n"
     "{\n"
     "   FragColor = inputColor;\n"
     "}\n\0";  
-
-static struct colorRect rectData;
-static float orthoMatrix[4][4];
-static float (transformMatrices[64][32])[4][4];
 
 void mult4dmatrix(float matA[][4], float matB[][4], float matC[][4])
 {
@@ -312,7 +317,15 @@ int initScreen()
     {   
         SDL_Log("Failed to init: %s\n", SDL_GetError());
         return -1; 
-    }   
+    }
+    clearColor.x = 0.0f;
+    clearColor.y = 0.0f;
+    clearColor.z = 0.0f;
+    clearColor.w = 1.0f;
+    pixelColor.x = 1.0f;
+    pixelColor.y = 1.0f;
+    pixelColor.z = 1.0f;
+    pixelColor.w = 1.0f;
 
     // OpenGL initialization
     // Set OpenGL version
@@ -392,16 +405,6 @@ void renderFrame(uint8_t screen[][32])
     ImGui_ImplSDL2_NewFrame(SDL_GL_GetCurrentWindow());
     igNewFrame();
     ImGuiIO io = *igGetIO();
-    ImVec4 clearColor;
-    clearColor.x = 0.0f;
-    clearColor.y = 0.0f;
-    clearColor.z = 0.0f;
-    clearColor.w = 1.00f;
-    ImVec4 pixelColor;
-    pixelColor.x = 1.0f;
-    pixelColor.y = 1.0f;
-    pixelColor.z = 1.0f;
-    pixelColor.w = 1.0f;
     if(*getGUIPtr())
     {
         showUI(getGUIPtr());
