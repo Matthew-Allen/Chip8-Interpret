@@ -40,7 +40,7 @@ void showUI(bool *p_open)
         igColorEdit3("Background color.", (float*)&clearColor, 0);
         igColorEdit3("Pixel color.", (float*)&pixelColor, 0);
     }
-    if(igButton("Confirm Settings", buttonSize))
+    if(igButton("Apply Settings", buttonSize))
     {
         setFrequency(freqReturn);
     }
@@ -302,7 +302,13 @@ bool pollEvents()
         case SDL_KEYDOWN:
             if (event.key.keysym.sym == SDLK_ESCAPE)
             {
-                *getGUIPtr() = true;
+                if(*getGUIPtr() == false)
+                {
+                    *getGUIPtr() = true;
+                } else
+                {
+                    *getGUIPtr() = false;
+                }
             }
             break;
       }
