@@ -11,6 +11,6 @@
 int initScreen();
 void drawScreen(uint8_t screen[][32], ImVec4 color);
 void cleanupSDL();
-void renderFrame();
+void renderFrame(Chip8State* state);
 bool pollEvents();
 #endif

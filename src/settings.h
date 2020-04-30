@@ -8,19 +8,9 @@ typedef struct runtime_settings
   int max_frequency;
   int max_framerate;
   bool showGUI;
-} settings;
+} chip8settings;
 
 void setDebug(bool debugSetting);
 
-void setFrequency(int freqSetting);
-
-void setFramerate(int frameSetting);
-
 bool getDebugMode();
-
-int getFrequency();
-
-int getFramerate();
-
-bool *getGUIPtr();
 #endif

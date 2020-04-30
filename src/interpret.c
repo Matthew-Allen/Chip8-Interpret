@@ -29,70 +29,77 @@ void debugPrint(const char * format,...)
   va_end(args);
 }
 
+Chip8State* createDefaultState()
+{
+    Chip8State* state = malloc(sizeof(Chip8State));
+    initialize(state);
+    return state;
+}
+
 void initialize(Chip8State* cpu)
 {
+    cpu->paused = false;
+    //Load reserved-memory data
 
-  //Load reserved-memory data
-  
-  //Array containing sprite data for built-in hexadecimal font 
-  uint8_t digits[80] = {
-    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-    0x20, 0x60, 0x20, 0x20, 0x70, // 1
-    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80,}; // F
+    //Array containing sprite data for built-in hexadecimal font 
+    uint8_t digits[80] = {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80,}; // F
 
-  for(int i = 0; i < 80; i++) // Load font sprite data to system memory
-  {
-    cpu->memory[i] = digits[i];
-  }
-  
-  for(int i = 0; i < 64; i++) // Zero out screen;
-  {
-    for(int j = 0; j < 32; j++)
+    for(int i = 0; i < 80; i++) // Load font sprite data to system memory
     {
-      cpu->screen[i][j] = 0;
+        cpu->memory[i] = digits[i];
     }
-  }
-  
-  for(int i = 0; i < 16; i++) // Zero out registers and stack
-  {
-    cpu->registers[i] = 0x00;
-    cpu->stack[i] = 0x00;
-  }
-  
-  cpu->stackPointer = 0x00;
-  cpu->PC = 0x200;
-  cpu->DT = 0x00;
-  cpu->ST = 0x00;
-  cpu->VI = 0x00;
 
-  return;
+    for(int i = 0; i < 64; i++) // Zero out screen;
+    {
+        for(int j = 0; j < 32; j++)
+        {
+            cpu->screen[i][j] = 0;
+        }
+    }
+
+    for(int i = 0; i < 16; i++) // Zero out registers and stack
+    {
+        cpu->registers[i] = 0x00;
+        cpu->stack[i] = 0x00;
+    }
+
+    cpu->stackPointer = 0x00;
+    cpu->PC = 0x200;
+    cpu->DT = 0x00;
+    cpu->ST = 0x00;
+    cpu->VI = 0x00;
+
+    return;
 }
 
 uint8_t getUpperNibble(uint8_t inputChar)
 {
-	inputChar >>= 4;
+    inputChar >>= 4;
 
-	return inputChar;
+    return inputChar;
 }
 
 uint8_t getLowerNibble(int8_t inputChar)
 {
-  inputChar &= 0x0F;
+    inputChar &= 0x0F;
 
-	return inputChar;
+    return inputChar;
 }
 
 
@@ -598,39 +605,42 @@ void loadRegs(uint8_t* instruction, Chip8State *cpu)
 
 int run(Chip8State *cpu)
 {
-  static const jumpTable opFuncs[35] = {
-    executeASM, clearScreen, returnFromSub, jumpToAddress,
-    executeSubroutine, skipEqImm, skipNeqImm, skipEq,
-    storeImmediate, addImmediate, store, or,
-    and, xor, add, subXY,
-    shiftRight, subYX, shiftLeft, skipNeq,
-    loadI_Imm, jmpIOffset, setRand, drawSprite,
-    skipIfKey, skipIfNotKey, storeDT, waitKey,
-    setDT, setST, addI, setISpriteAddr,
-    storeBCD, storeRegs, loadRegs};
-  static clock_t prevTime;
-
-  uint8_t* nextInstruction = &cpu->memory[cpu->PC];
-  int nextOp = decodeInstruction(nextInstruction);
-  debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
-  if(nextOp == INVALID_OP || nextOp == EXEC_ASM)
-  {
-    return -1;
-  } else
-  {
-    opFuncs[decodeInstruction(nextInstruction)](nextInstruction, cpu);
-    cpu->PC += 2;
-  }
-
-  if((double)(clock() - prevTime)/CLOCKS_PER_SEC*1000 > 16)
-  {
-    if(cpu->DT > 0)
+    if(cpu->paused)
     {
-      cpu->DT -= 1;
+        return 0;
     }
-    prevTime = clock();
-  }
+    static const jumpTable opFuncs[35] = {
+        executeASM, clearScreen, returnFromSub, jumpToAddress,
+        executeSubroutine, skipEqImm, skipNeqImm, skipEq,
+        storeImmediate, addImmediate, store, or,
+        and, xor, add, subXY,
+        shiftRight, subYX, shiftLeft, skipNeq,
+        loadI_Imm, jmpIOffset, setRand, drawSprite,
+        skipIfKey, skipIfNotKey, storeDT, waitKey,
+        setDT, setST, addI, setISpriteAddr,
+        storeBCD, storeRegs, loadRegs};
 
-  return 0;
+    uint8_t* nextInstruction = &cpu->memory[cpu->PC];
+    int nextOp = decodeInstruction(nextInstruction);
+    debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
+    if(nextOp == INVALID_OP || nextOp == EXEC_ASM)
+    {
+        return -1;
+    } else
+    {
+        opFuncs[decodeInstruction(nextInstruction)](nextInstruction, cpu);
+        cpu->PC += 2;
+    }
+
+    if((double)(clock() - cpu->prevTime)/CLOCKS_PER_SEC*1000 > 16)
+    {
+        if(cpu->DT > 0)
+        {
+            cpu->DT -= 1;
+        }
+        cpu->prevTime = clock();
+    }
+
+    return 0;
 
 }

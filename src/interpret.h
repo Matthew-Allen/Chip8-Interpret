@@ -15,15 +15,18 @@
 
 typedef struct cpuState 
 {
-	uint8_t memory[4096];
-	uint8_t registers[16];
-	uint16_t stack[16];
-  uint8_t screen[64][32];
-	uint8_t stackPointer;
-	uint16_t PC;
-  uint8_t DT;
-  uint8_t ST;
-	uint16_t VI;
+    uint8_t memory[4096];
+    uint8_t registers[16];
+    uint16_t stack[16];
+    uint8_t screen[64][32];
+    uint8_t stackPointer;
+    uint16_t PC;
+    uint8_t DT;
+    uint8_t ST;
+    uint16_t VI;
+    unsigned int frequency;
+    clock_t prevTime;
+    bool paused;
 } Chip8State;
 
 enum iType{EXEC_ASM, CLS, RETURN, JMP,
@@ -47,6 +50,8 @@ uint8_t getLowerNibble(int8_t inputChar);
 int decodeInstruction(uint8_t* instruction);
 
 void returnFromSub(uint8_t* instruction, Chip8State *cpu);
+
+Chip8State* createDefaultState();
 
 void initialize(Chip8State* cpu);
 

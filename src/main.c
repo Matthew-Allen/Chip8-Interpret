@@ -34,14 +34,17 @@ int loadProgram(Chip8State* cpu, char* path)
 int main(int argc, char* argv[])
 {
 
-  Chip8State state;
-  initialize(&state);
+  Chip8State* state;
+  state = createDefaultState();
+  initialize(state);
   struct timespec sleepTime;
   sleepTime.tv_sec = 0;
   sleepTime.tv_nsec = 1L;
   clock_t cpuClock = clock();
   clock_t renderClock = clock();
   srand(clock());
+  unsigned int framerate;
+
 
   if(argc < 2)
   {
@@ -50,8 +53,8 @@ int main(int argc, char* argv[])
   }
 
   // Set default clock speed and maximum framerate
-  setFrequency(500);
-  setFramerate(60);
+  state->frequency = 500;
+  framerate = 60;
 
   for(int i = 1; i < argc-1; i++) // Replace with open-source CLI argument parsing lib at first convenience.
   {
@@ -62,11 +65,9 @@ int main(int argc, char* argv[])
 
     if(strcmp(argv[i], "-f") == 0)
     {
-      int framerate;
       if(i + 1 < argc-1)
       {
         sscanf(argv[i+1], "%d", &framerate);
-        setFramerate(framerate);
         printf("Setting framerate to %d.\n", framerate);
       } else
       {
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
       if(i + 1 < argc-1)
       {
         sscanf(argv[i+1], "%d", &frequency);
-        setFrequency(frequency);
+        state->frequency = frequency;
         printf("Setting clock frequency to %d Hertz.\n", frequency);
       } else
       {
@@ -89,7 +90,7 @@ int main(int argc, char* argv[])
     }
   }
   char* filename = argv[argc-1];
-  loadProgram(&state, filename);
+  loadProgram(state, filename);
 
   int rendererState = 0;
 
@@ -105,9 +106,9 @@ int main(int argc, char* argv[])
 
       running = pollEvents();
       double timediff = ((double)(clock() - cpuClock)/CLOCKS_PER_SEC)*1000;
-      if(timediff > (1000/(double)getFrequency()))
+      if(timediff > (1000/(double)state->frequency) && state->paused == false)
       {
-          if(run(&state) == -1)
+          if(run(state) == -1)
           {
               printf("Invalid opcode, exiting.\n");
               return -1;
@@ -115,10 +116,10 @@ int main(int argc, char* argv[])
           cpuClock = clock();
       }
 
-      if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/getFramerate()))
+      if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/framerate))
       {
           renderClock = clock();
-          renderFrame(state.screen);
+          renderFrame(state);
       }
   }
   cleanupSDL();

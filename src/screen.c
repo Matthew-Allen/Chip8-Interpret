@@ -15,36 +15,42 @@ static float orthoMatrix[4][4];
 static float (transformMatrices[64][32])[4][4];
 static ImVec4 clearColor;
 static ImVec4 pixelColor;
+static bool settingsMenuActive;
 
-void showUI(bool *p_open)
+void showSettingsMenu(bool *open, Chip8State* state)
 {
-    static bool first = true;
-    static int freqReturn;
-    ImVec2 buttonSize;
-    buttonSize.x = 0;
-    buttonSize.y = 0;
-    bool freqCollapse = true;
-    bool displayCollapse = true;
-    if(first)
+    if(*open)
     {
-        freqReturn = getFrequency();
-        first = false;
+        ImVec2 buttonSize;
+        buttonSize.x = 0;
+        buttonSize.y = 0;
+        bool freqCollapse = true;
+        bool displayCollapse = true;
+        igBegin("Settings", open, 0);
+        if(igCollapsingHeaderBoolPtr("Frequency Settings", &freqCollapse, 0))
+        {
+            igInputInt("Frequency", &state->frequency, 10, 100, ImGuiInputTextFlags_CharsDecimal);
+        }
+        if(igCollapsingHeaderBoolPtr("Display", &displayCollapse, 0))
+        {
+            igColorEdit3("Background color", (float*)&clearColor, 0);
+            igColorEdit3("Pixel color", (float*)&pixelColor, 0);
+        }
+        if(state->paused)
+        {
+            if(igButton("Unpause", buttonSize))
+            {
+                state->paused = false;
+            }
+        } else
+        {
+            if(igButton("Pause", buttonSize))
+            {
+                state->paused = true;
+            }
+        }
+        igEnd();
     }
-    igBegin("Settings", p_open, 0);
-    if(igCollapsingHeaderBoolPtr("Frequency", &freqCollapse, 0))
-    {
-        igInputInt("CPU Frequency", &freqReturn, 10, 100, ImGuiInputTextFlags_CharsDecimal);
-    }
-    if(igCollapsingHeaderBoolPtr("Display", &displayCollapse, 0))
-    {
-        igColorEdit3("Background color.", (float*)&clearColor, 0);
-        igColorEdit3("Pixel color.", (float*)&pixelColor, 0);
-    }
-    if(igButton("Apply Settings", buttonSize))
-    {
-        setFrequency(freqReturn);
-    }
-    igEnd();
 }
 
 
@@ -302,12 +308,12 @@ bool pollEvents()
         case SDL_KEYDOWN:
             if (event.key.keysym.sym == SDLK_ESCAPE)
             {
-                if(*getGUIPtr() == false)
+                if(settingsMenuActive == false)
                 {
-                    *getGUIPtr() = true;
+                    settingsMenuActive = true;
                 } else
                 {
-                    *getGUIPtr() = false;
+                    settingsMenuActive = false;
                 }
             }
             break;
@@ -319,6 +325,7 @@ bool pollEvents()
 
 int initScreen()
 {
+    settingsMenuActive = false;
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {   
         SDL_Log("Failed to init: %s\n", SDL_GetError());
@@ -405,16 +412,14 @@ void drawScreen(uint8_t screen[][32], ImVec4 color)
     glBindVertexArray(0);
 }
 
-void renderFrame(uint8_t screen[][32])
+void renderFrame(Chip8State* state)
 {
+    uint8_t (*screen)[32] = state->screen;
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(SDL_GL_GetCurrentWindow());
     igNewFrame();
     ImGuiIO io = *igGetIO();
-    if(*getGUIPtr())
-    {
-        showUI(getGUIPtr());
-    }
+    showSettingsMenu(&settingsMenuActive, state);
 	igRender();
 	//SDL_GL_MakeCurrent(SDL_GL_GetCurrentWindow(), gl_context);
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -427,7 +432,7 @@ void renderFrame(uint8_t screen[][32])
 
 void cleanupSDL()
 {
-  //SDL_GL_DeleteContext(SDL_GL_GetCurrentContext);
+  SDL_GL_DeleteContext(SDL_GL_GetCurrentContext());
   SDL_DestroyWindow(SDL_GL_GetCurrentWindow());
   SDL_Quit();
 }
