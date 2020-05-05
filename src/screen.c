@@ -27,11 +27,15 @@ void showSettingsMenu(bool *open, Chip8State* state)
         bool freqCollapse = true;
         bool displayCollapse = true;
         igBegin("Settings", open, 0);
-        if(igCollapsingHeaderBoolPtr("Frequency Settings", &freqCollapse, 0))
+        if(igCollapsingHeaderBoolPtr("CPU Settings", &freqCollapse, 0))
         {
             igInputInt("Frequency", &state->frequency, 10, 100, ImGuiInputTextFlags_CharsDecimal);
+            igText("Bit Shift Method");
+            igRadioButtonIntPtr("Store to VX", &state->shiftMethod, 0);
+            igSameLine(0, 5);
+            igRadioButtonIntPtr("Store to VY", &state->shiftMethod, 1);
         }
-        if(igCollapsingHeaderBoolPtr("Display", &displayCollapse, 0))
+        if(igCollapsingHeaderBoolPtr("Display Settings", &displayCollapse, 0))
         {
             igColorEdit3("Background color", (float*)&clearColor, 0);
             igColorEdit3("Pixel color", (float*)&pixelColor, 0);

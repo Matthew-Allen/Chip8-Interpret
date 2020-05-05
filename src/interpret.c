@@ -38,6 +38,8 @@ Chip8State* createDefaultState()
 
 void initialize(Chip8State* cpu)
 {
+    //Set default metadata values
+    cpu->shiftMethod = 0; // Default to store in VX
     cpu->paused = false;
     //Load reserved-memory data
 
@@ -408,7 +410,13 @@ void shiftRight(uint8_t* instruction, Chip8State *cpu)
   int reg2 = getUpperNibble(instruction[1]);
   lsb = cpu->registers[reg1] & 0x01; 
   cpu->registers[15] = lsb;
-  cpu->registers[reg1] = cpu->registers[reg1] >> 1;
+  if(cpu->shiftMethod == 0)
+  {
+      cpu->registers[reg1] = cpu->registers[reg1] >> 1;
+  } else if(cpu->shiftMethod == 1)
+  {
+      cpu->registers[reg2] = cpu->registers[reg1] >> 1;
+  }
 }
 
 void subYX(uint8_t* instruction, Chip8State *cpu)
@@ -436,7 +444,13 @@ void shiftLeft(uint8_t* instruction, Chip8State *cpu)
   int reg2 = getUpperNibble(instruction[1]);
   msb = (cpu->registers[reg1] & 0x80) >> 7;
   cpu->registers[15] = msb;
-  cpu->registers[reg1] = cpu->registers[reg1] << 1;
+  if(cpu->shiftMethod == 0)
+  {
+      cpu->registers[reg1] = cpu->registers[reg1] << 1;
+  } else if(cpu->shiftMethod == 1)
+  {
+      cpu->registers[reg2] = cpu->registers[reg1] << 1;
+  }
 }
 
 void loadI_Imm(uint8_t* instruction, Chip8State *cpu)

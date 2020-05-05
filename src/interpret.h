@@ -27,6 +27,7 @@ typedef struct cpuState
     unsigned int frequency;
     clock_t prevTime;
     bool paused;
+    int shiftMethod;
 } Chip8State;
 
 enum iType{EXEC_ASM, CLS, RETURN, JMP,
