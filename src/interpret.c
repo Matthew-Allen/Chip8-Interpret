@@ -90,6 +90,47 @@ void initialize(Chip8State* cpu)
     return;
 }
 
+int loadProgram(Chip8State* cpu, char* path)
+{
+  FILE* programFile = fopen(path, "r");
+  if(cpu->currentFilePath != NULL)
+  {
+      if(strcmp(path, cpu->currentFilePath) != 0)
+      {
+          free(cpu->currentFilePath);
+          cpu->currentFilePath = (char*)malloc(sizeof(path));
+          strncpy(cpu->currentFilePath, path, sizeof(char)*strlen(path));
+          cpu->currentFilePath[strlen(path)] = '\0';
+      }
+  } else
+  {
+      cpu->currentFilePath = (char*)malloc(sizeof(path));
+      strncpy(cpu->currentFilePath, path, sizeof(char)*strlen(path));
+      cpu->currentFilePath[strlen(path)] = '\0';
+  }
+  if(programFile == NULL)
+  {
+    printf("Error opening file %s\n", path);
+    return -1;
+  }
+
+  int bytesRead = fread((cpu->memory + 0x200), 1, MAX_PROGRAM_SIZE + 1, programFile);
+  printf("Finished reading file \"%s\"\n%d bytes loaded.\n", path, bytesRead);
+
+  if(bytesRead > MAX_PROGRAM_SIZE)
+  {
+    printf("Warning: Read stopped before reaching EOF (File size too large).\n");
+    return -1;
+  }
+  return 0;
+}
+
+void reload(Chip8State* cpu)
+{
+    initialize(cpu);
+    loadProgram(cpu, cpu->currentFilePath);
+}
+
 uint8_t getUpperNibble(uint8_t inputChar)
 {
     inputChar >>= 4;

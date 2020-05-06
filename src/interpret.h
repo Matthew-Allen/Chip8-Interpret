@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <string.h>
 
+#define MAX_PROGRAM_SIZE ( PROGRAM_MEMORY_END - PROGRAM_MEMORY_START )
 #define PROGRAM_MEMORY_START 0x200
 #define PROGRAM_MEMORY_END 0x1000
 #define FONT_DATA_START 0x000
@@ -28,6 +30,7 @@ typedef struct cpuState
     clock_t prevTime;
     bool paused;
     int shiftMethod;
+    char* currentFilePath;
 } Chip8State;
 
 enum iType{EXEC_ASM, CLS, RETURN, JMP,
@@ -63,6 +66,10 @@ void initialize(Chip8State* cpu);
 void setDebug(bool value);
 
 void clearNumpad();
+
+int loadProgram(Chip8State* cpu, char* path);
+
+void reload(Chip8State* cpu);
 
 void setNumpadKey(int keyIndex);
 

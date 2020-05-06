@@ -27,6 +27,8 @@ void showSettingsMenu(bool *open, Chip8State* state)
         bool freqCollapse = true;
         bool displayCollapse = true;
         igBegin("Settings", open, 0);
+        igText("Currently Running:");
+        igText(state->currentFilePath);
         if(igCollapsingHeaderBoolPtr("CPU Settings", &freqCollapse, 0))
         {
             igInputInt("Frequency", &state->frequency, 10, 100, ImGuiInputTextFlags_CharsDecimal);
@@ -52,6 +54,11 @@ void showSettingsMenu(bool *open, Chip8State* state)
             {
                 state->paused = true;
             }
+        }
+        igSameLine(0,5);
+        if(igButton("Reload", buttonSize))
+        {
+            reload(state);
         }
         igEnd();
     }
