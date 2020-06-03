@@ -5,6 +5,27 @@ typedef void (*jumpTable)(uint8_t* instruction, Chip8State *cpu);
 
 static bool numpad[16];
 
+int timediff(struct timespec *result, const struct timespec *x, const struct timespec *y)
+{
+  if(x->tv_nsec < y->tv_nsec)
+  {
+    result->tv_nsec = (x->tv_nsec + BILLION) - y->tv_nsec;
+    result->tv_sec = (x->tv_sec - 1) - y->tv_sec;
+  } else
+  {
+    result->tv_nsec = x->tv_nsec - y->tv_nsec;
+    result->tv_sec = x->tv_sec - y->tv_sec;
+  }
+
+  if(x->tv_sec < y->tv_sec)
+  {
+    return 1;
+  } else
+  {
+    return 0;
+  }
+}
+
 void clearNumpad()
 {
   for(int i = 0; i < 16; i++)
@@ -87,27 +108,22 @@ void initialize(Chip8State* cpu)
     cpu->ST = 0x00;
     cpu->VI = 0x00;
 
+    cpu->currentFilePath = NULL;
+
     return;
 }
 
 int loadProgram(Chip8State* cpu, char* path)
 {
   FILE* programFile = fopen(path, "r");
-  if(cpu->currentFilePath != NULL)
+  if(cpu->currentFilePath != NULL && strcmp(path, cpu->currentFilePath) != 0)
   {
-      if(strcmp(path, cpu->currentFilePath) != 0)
-      {
-          free(cpu->currentFilePath);
-          cpu->currentFilePath = (char*)malloc(sizeof(path));
-          strncpy(cpu->currentFilePath, path, sizeof(char)*strlen(path));
-          cpu->currentFilePath[strlen(path)] = '\0';
-      }
-  } else
-  {
-      cpu->currentFilePath = (char*)malloc(sizeof(path));
-      strncpy(cpu->currentFilePath, path, sizeof(char)*strlen(path));
-      cpu->currentFilePath[strlen(path)] = '\0';
+      free(cpu->currentFilePath);
   }
+
+  cpu->currentFilePath = (char*)malloc(strlen(path)+1);
+  strcpy(cpu->currentFilePath, path);
+
   if(programFile == NULL)
   {
     printf("Error opening file %s\n", path);
@@ -127,8 +143,11 @@ int loadProgram(Chip8State* cpu, char* path)
 
 void reload(Chip8State* cpu)
 {
+    char* tempString = (char*)malloc(strlen(cpu->currentFilePath)+1);
+    strcpy(tempString, cpu->currentFilePath);
     initialize(cpu);
-    loadProgram(cpu, cpu->currentFilePath);
+    loadProgram(cpu, tempString);
+    free(tempString);
 }
 
 uint8_t getUpperNibble(uint8_t inputChar)
@@ -660,6 +679,7 @@ void loadRegs(uint8_t* instruction, Chip8State *cpu)
 
 int run(Chip8State *cpu)
 {
+    struct timespec currentTime, resultTime;
     if(cpu->paused)
     {
         return 0;
@@ -677,7 +697,7 @@ int run(Chip8State *cpu)
 
     uint8_t* nextInstruction = &cpu->memory[cpu->PC];
     int nextOp = decodeInstruction(nextInstruction);
-    debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
+    //debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
     if(nextOp == INVALID_OP || nextOp == EXEC_ASM)
     {
         return -1;
@@ -686,14 +706,16 @@ int run(Chip8State *cpu)
         opFuncs[decodeInstruction(nextInstruction)](nextInstruction, cpu);
         cpu->PC += 2;
     }
-
-    if((double)(clock() - cpu->prevTime)/CLOCKS_PER_SEC*1000 > 16)
+    
+    clock_gettime(CLOCK_MONOTONIC, &currentTime);
+    timediff(&resultTime, &currentTime, &cpu->prevTime);
+    if((resultTime.tv_nsec / 1000000) > 16)
     {
         if(cpu->DT > 0)
         {
             cpu->DT -= 1;
         }
-        cpu->prevTime = clock();
+        clock_gettime(CLOCK_MONOTONIC, &cpu->prevTime);
     }
 
     return 0;

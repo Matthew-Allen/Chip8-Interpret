@@ -9,6 +9,9 @@
 #include <time.h>
 #include <string.h>
 
+#define MILLION 1000000
+#define BILLION 1000000000
+
 #define MAX_PROGRAM_SIZE ( PROGRAM_MEMORY_END - PROGRAM_MEMORY_START )
 #define PROGRAM_MEMORY_START 0x200
 #define PROGRAM_MEMORY_END 0x1000
@@ -27,7 +30,7 @@ typedef struct cpuState
     uint8_t ST;
     uint16_t VI;
     unsigned int frequency;
-    clock_t prevTime;
+    struct timespec prevTime;
     bool paused;
     int shiftMethod;
     char* currentFilePath;
@@ -73,4 +76,5 @@ void reload(Chip8State* cpu);
 
 void setNumpadKey(int keyIndex);
 
+int timediff(struct timespec *result, const struct timespec *x, const struct timespec *y);
 #endif

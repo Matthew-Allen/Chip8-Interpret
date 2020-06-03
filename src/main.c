@@ -17,8 +17,7 @@ int main(int argc, char* argv[])
   struct timespec sleepTime;
   sleepTime.tv_sec = 0;
   sleepTime.tv_nsec = 1L;
-  clock_t cpuClock = clock();
-  clock_t renderClock = clock();
+  struct timespec cpuTime, renderTime, diffTime, result;
   srand(clock());
   unsigned int framerate;
 
@@ -78,26 +77,31 @@ int main(int argc, char* argv[])
   }
 
   bool running = true;
+  clock_gettime(CLOCK_MONOTONIC, &cpuTime);
+  clock_gettime(CLOCK_MONOTONIC, &renderTime);
   while(running)
   {
 
       running = pollEvents();
-      double timediff = ((double)(clock() - cpuClock)/CLOCKS_PER_SEC)*1000;
-      if(timediff > (1000/(double)state->frequency) && state->paused == false)
+      clock_gettime(CLOCK_MONOTONIC, &diffTime);
+      timediff(&result, &diffTime, &cpuTime);
+      if((result.tv_nsec / (double) MILLION) > (1000/(double)state->frequency) && state->paused == false)
       {
           if(run(state) == -1)
           {
               printf("Invalid opcode, exiting.\n");
               return -1;
           }
-          cpuClock = clock();
+          clock_gettime(CLOCK_MONOTONIC, &cpuTime);
       }
 
-      if((double)(clock() - renderClock)/CLOCKS_PER_SEC*1000 > (1000/framerate))
+      timediff(&result, &diffTime, &renderTime);
+      if((result.tv_nsec /(double) MILLION) > (1000/(double)framerate))
       {
-          renderClock = clock();
+          clock_gettime(CLOCK_MONOTONIC, &renderTime);
           renderFrame(state);
       }
+      usleep(1);
   }
   cleanupSDL();
 
