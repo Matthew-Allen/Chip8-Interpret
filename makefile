@@ -14,9 +14,9 @@ CPPSRC := $(wildcard $(INCLDIR)*.cpp)
 OBJS := $(notdir $(CPPSRC:.cpp=.o))
 OBJS += $(notdir $(CSRC:.c=.o))
 OBJS := $(addprefix $(ODIR),$(OBJS))
-BUILDC = gcc -c -lSDL2 -lGL -ldl `sdl2-config --cflags`
-BUILDCPP = g++ -c -lSDL2 -lGL -ldl `sdl2-config --cflags`
-LINK = g++ -lSDL2 -lGL -ldl $(CIMGUI_LIB)
+BUILDC = gcc -c -lSDL2 -lSDL2_mixer -lGL -ldl `sdl2-config --cflags`
+BUILDCPP = g++ -c -lSDL2 -lSDL2_mixer -lGL -ldl `sdl2-config --cflags`
+LINK = g++ -lSDL2 -lSDL2_mixer -lGL -ldl $(CIMGUI_LIB)
 CFLAGS = -g -DIMGUI_IMPL_API="extern" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(SRCDIR) -I$(GL3WDIR) -I$(INCLDIR) -I$(CIMGUIDIR) -I$(IMGUIDIR)
 CPPFLAGS = -g -DIMGUI_IMPL_API="extern \"C\"" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(SRCDIR) -I$(GL3WDIR) -I$(INCLDIR) -I$(CIMGUIDIR) -I$(IMGUIDIR)
 

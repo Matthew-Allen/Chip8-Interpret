@@ -16,6 +16,7 @@ static float (transformMatrices[64][32])[4][4];
 static ImVec4 clearColor;
 static ImVec4 pixelColor;
 static bool settingsMenuActive;
+static Mix_Chunk *squareWave;
 
 void showSettingsMenu(bool *open, Chip8State* state)
 {
@@ -342,6 +343,11 @@ int initScreen()
         SDL_Log("Failed to init: %s\n", SDL_GetError());
         return -1; 
     }
+    if(Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
+    {
+        printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+        return -1;
+    }
     clearColor.x = 0.0f;
     clearColor.y = 0.0f;
     clearColor.z = 0.0f;
@@ -399,7 +405,28 @@ int initScreen()
     ImGui_ImplOpenGL3_Init(glsl_version);
     igStyleColorsDark(NULL);
     SDL_GL_MakeCurrent(window, gl_context);
+
+    //load sound
+    squareWave = Mix_LoadWAV("SquareWave.wav");
+    if(squareWave == NULL)
+    {
+        printf("Error loading SquareWave.wav\n");
+        return -1;
+    }
     return 0;
+}
+
+void playSquareWave()
+{
+    if(!Mix_Playing(1))
+    {
+        Mix_PlayChannel(1,squareWave, -1);
+    }
+}
+
+void stopSound()
+{
+    Mix_HaltChannel(1);
 }
 
 void drawScreen(uint8_t screen[][32], ImVec4 color)
@@ -425,6 +452,13 @@ void drawScreen(uint8_t screen[][32], ImVec4 color)
 
 void renderFrame(Chip8State* state)
 {
+    if(state->ST > 0)
+    {
+        playSquareWave();
+    } else
+    {
+        stopSound();
+    }
     uint8_t (*screen)[32] = state->screen;
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(SDL_GL_GetCurrentWindow());

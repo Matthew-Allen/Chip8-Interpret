@@ -713,7 +713,11 @@ int run(Chip8State *cpu)
     {
         if(cpu->DT > 0)
         {
-            cpu->DT -= 1;
+            cpu->DT--;
+        }
+        if(cpu->ST > 0)
+        {
+            cpu->ST--;
         }
         clock_gettime(CLOCK_MONOTONIC, &cpu->prevTime);
     }
