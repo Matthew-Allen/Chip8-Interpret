@@ -61,6 +61,20 @@ void showSettingsMenu(bool *open, Chip8State* state)
         {
             reload(state);
         }
+        igSameLine(0,5);
+        if(igButton("Open File", buttonSize))
+        {
+            char* fileName;
+            fileName = tinyfd_openFileDialog("Select a chip8 rom",
+                    "",
+                    0,
+                    NULL,
+                    NULL,
+                    0);
+            free(state->currentFilePath);
+            state->currentFilePath = fileName;
+            reload(state);
+        }
         igEnd();
     }
 }
