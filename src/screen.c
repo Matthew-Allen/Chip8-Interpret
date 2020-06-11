@@ -1,6 +1,7 @@
 #include "screen.h"
 #define DEFAULT_WIDTH 800
 #define DEFAULT_HEIGHT 600
+#define SDL_MAX_SCANCODE_VALUE 284
 
 void recomputeTransformMatrices();
 
@@ -18,6 +19,62 @@ static ImVec4 pixelColor;
 static bool settingsMenuActive;
 static Mix_Chunk *squareWave;
 
+int getCurrentlyPressedKey() // Get a single pressed key. If multiple keys are pressed, key with lowest numerical scancode will be prioritized. Return -1 if no key is pressed.
+{
+    for(int i = 0; i <= SDL_MAX_SCANCODE_VALUE; i++)
+    {
+        if(igIsKeyPressed(i, false))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+#define keyBufferSize 200
+void showBindingsMenu(bool* open)
+{
+    static bool first = true;
+    static char labels[16][8];
+    static char bindingBuffers[16][keyBufferSize];
+    int keyPressed;
+    if(first)
+    {
+        for(int i = 0; i < 16; i++)
+        {
+            sprintf(labels[i],"##Num %X",i);
+        }
+        first = false;
+    }
+
+    if(*open)
+    {
+
+        static bool currentSelection[16];
+        igBegin("Controls", open,ImGuiWindowFlags_AlwaysAutoResize);
+        if(*open)
+        {
+            igPushItemWidth(100);
+            for(int i = 0; i < 16; i++)
+            {
+                igInputTextWithHint(labels[i],"<Unbound>", bindingBuffers[i], keyBufferSize, ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+                if(igIsItemActive())
+                {
+                    keyPressed = getCurrentlyPressedKey();
+                    if(keyPressed != -1)
+                    {
+                        //printf("Printing keypress %d into item %d\n", keyPressed, i);
+                        strcpy(bindingBuffers[i], SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed)));
+                    }
+                }
+                igSameLine(0,5);
+                igText("Numpad %X", i);
+            }
+            igPopItemWidth();
+        }
+        igEnd();
+    }
+}
 void showSettingsMenu(bool *open, Chip8State* state)
 {
     if(*open)
@@ -25,9 +82,10 @@ void showSettingsMenu(bool *open, Chip8State* state)
         ImVec2 buttonSize;
         buttonSize.x = 0;
         buttonSize.y = 0;
+        static bool bindingsMenu = false;
         bool freqCollapse = true;
         bool displayCollapse = true;
-        igBegin("Settings", open, 0);
+        igBegin("Settings", open, ImGuiWindowFlags_AlwaysAutoResize);
         igText("Currently Running:");
         igText(state->currentFilePath);
         if(igCollapsingHeaderBoolPtr("CPU Settings", &freqCollapse, 0))
@@ -75,7 +133,13 @@ void showSettingsMenu(bool *open, Chip8State* state)
             state->currentFilePath = fileName;
             reload(state);
         }
+        if(igButton("Control Bindings", buttonSize))
+        {
+            bindingsMenu = true;
+        }
+        igText("%X",getCurrentlyPressedKey());
         igEnd();
+        showBindingsMenu(&bindingsMenu);
     }
 }
 
@@ -491,7 +555,8 @@ void renderFrame(Chip8State* state)
 
 void cleanupSDL()
 {
-  SDL_GL_DeleteContext(SDL_GL_GetCurrentContext());
-  SDL_DestroyWindow(SDL_GL_GetCurrentWindow());
-  SDL_Quit();
+    Mix_FreeChunk(squareWave);
+    SDL_GL_DeleteContext(SDL_GL_GetCurrentContext());
+    SDL_DestroyWindow(SDL_GL_GetCurrentWindow());
+    SDL_Quit();
 }
