@@ -31,17 +31,18 @@ int getCurrentlyPressedKey() // Get a single pressed key. If multiple keys are p
     return -1;
 }
 
-#define keyBufferSize 200
 void showBindingsMenu(bool* open)
 {
     static bool first = true;
     static char labels[16][8];
-    static char bindingBuffers[16][keyBufferSize];
+    static char* bindingBuffers[16];
     int keyPressed;
     if(first)
     {
         for(int i = 0; i < 16; i++)
         {
+            bindingBuffers[i] = (char*)malloc(sizeof(char));
+            bindingBuffers[i][0] = '\0';
             sprintf(labels[i],"##Num %X",i);
         }
         first = false;
@@ -57,13 +58,15 @@ void showBindingsMenu(bool* open)
             igPushItemWidth(100);
             for(int i = 0; i < 16; i++)
             {
-                igInputTextWithHint(labels[i],"<Unbound>", bindingBuffers[i], keyBufferSize, ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+                igInputTextWithHint(labels[i],"<Unbound>", bindingBuffers[i], strlen(bindingBuffers[i]), ImGuiInputTextFlags_ReadOnly, NULL, NULL);
                 if(igIsItemActive())
                 {
                     keyPressed = getCurrentlyPressedKey();
                     if(keyPressed != -1)
                     {
-                        //printf("Printing keypress %d into item %d\n", keyPressed, i);
+                        const char* keyString = SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed));
+                        free(bindingBuffers[i]);
+                        bindingBuffers[i] = (char*)malloc(sizeof(char)*(strlen(keyString)+1));
                         strcpy(bindingBuffers[i], SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed)));
                     }
                 }
