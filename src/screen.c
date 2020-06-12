@@ -18,6 +18,7 @@ static ImVec4 clearColor;
 static ImVec4 pixelColor;
 static bool settingsMenuActive;
 static Mix_Chunk *squareWave;
+static int keyBindings[16];
 
 int getCurrentlyPressedKey() // Get a single pressed key. If multiple keys are pressed, key with lowest numerical scancode will be prioritized. Return -1 if no key is pressed.
 {
@@ -44,6 +45,8 @@ void showBindingsMenu(bool* open)
             bindingBuffers[i] = (char*)malloc(sizeof(char));
             bindingBuffers[i][0] = '\0';
             sprintf(labels[i],"##Num %X",i);
+
+            keyBindings[i] = -1;
         }
         first = false;
     }
@@ -68,6 +71,7 @@ void showBindingsMenu(bool* open)
                         free(bindingBuffers[i]);
                         bindingBuffers[i] = (char*)malloc(sizeof(char)*(strlen(keyString)+1));
                         strcpy(bindingBuffers[i], SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed)));
+                        keyBindings[i] = keyPressed; 
                     }
                 }
                 igSameLine(0,5);
@@ -91,6 +95,7 @@ void showSettingsMenu(bool *open, Chip8State* state)
         igBegin("Settings", open, ImGuiWindowFlags_AlwaysAutoResize);
         igText("Currently Running:");
         igText(state->currentFilePath);
+
         if(igCollapsingHeaderBoolPtr("CPU Settings", &freqCollapse, 0))
         {
             igInputInt("Frequency", &state->frequency, 10, 100, ImGuiInputTextFlags_CharsDecimal);
@@ -138,9 +143,8 @@ void showSettingsMenu(bool *open, Chip8State* state)
         }
         if(igButton("Control Bindings", buttonSize))
         {
-            bindingsMenu = true;
+            bindingsMenu = bindingsMenu ? false : true;
         }
-        igText("%X",getCurrentlyPressedKey());
         igEnd();
         showBindingsMenu(&bindingsMenu);
     }
@@ -354,6 +358,17 @@ void parseKeyboard()
 {
   const uint8_t* stateArray = SDL_GetKeyboardState(NULL);
   clearNumpad();
+  for(int i = 0; i < 16; i++)
+  {
+      if(keyBindings[i] != -1)
+      {
+          if(stateArray[keyBindings[i]])
+          {
+              setNumpadKey(i);
+          }
+      }
+  }
+  /*
   if(stateArray[SDL_SCANCODE_Q])
   {
     setNumpadKey(4);
@@ -378,7 +393,7 @@ void parseKeyboard()
   {
     setNumpadKey(9);
   }
-
+  */
 }
 
 bool pollEvents()
