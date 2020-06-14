@@ -23,8 +23,14 @@ CPPFLAGS = -g -DIMGUI_IMPL_API="extern \"C\"" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I
 
 .PHONY: build
 .PHONY: clean
+.PHONY: directories
 
-build: $(ODIR)cimgui.o $(BUILDDIR)Chip8-Interpret.out
+build: directories $(ODIR)cimgui.o $(BUILDDIR)Chip8-Interpret.out
+
+directories: $(ODIR)
+
+$(ODIR):
+	mkdir $(ODIR)
 
 $(BUILDDIR)Chip8-Interpret.out: $(OBJS)
 	$(LINK) -o $@ $^
