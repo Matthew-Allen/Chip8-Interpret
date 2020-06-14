@@ -524,12 +524,15 @@ void playSquareWave()
     if(!Mix_Playing(1))
     {
         Mix_PlayChannel(1,squareWave, -1);
+    } else if(Mix_Paused(1))
+    {
+        Mix_Resume(1);
     }
 }
 
 void stopSound()
 {
-    Mix_HaltChannel(1);
+    Mix_Pause(1);
 }
 
 void drawScreen(uint8_t screen[][32], ImVec4 color)
