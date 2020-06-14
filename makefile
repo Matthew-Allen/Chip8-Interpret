@@ -46,7 +46,7 @@ $(ODIR)%.o:: $(GL3WDIR)%.c
 
 $(ODIR)cimgui.o:
 	make -f makecimgui
-	mv cimgui.out $(ODIR)cimgui.o
+	mv ./cimgui.out $(ODIR)cimgui.o
 clean:
 	rm -f $(ODIR)*.o
 	rm -f $(BUILDDIR)*.out

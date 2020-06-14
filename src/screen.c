@@ -37,6 +37,7 @@ void showBindingsMenu(bool* open)
     static bool first = true;
     static char labels[16][8];
     static char* bindingBuffers[16];
+    bool focusNext = false;
     int keyPressed;
     if(first)
     {
@@ -61,12 +62,18 @@ void showBindingsMenu(bool* open)
             igPushItemWidth(100);
             for(int i = 0; i < 16; i++)
             {
+                if(focusNext == true)
+                {
+                  igSetKeyboardFocusHere(0);
+                  focusNext = false;
+                }
                 igInputTextWithHint(labels[i],"<Unbound>", bindingBuffers[i], strlen(bindingBuffers[i]), ImGuiInputTextFlags_ReadOnly, NULL, NULL);
                 if(igIsItemActive())
                 {
                     keyPressed = getCurrentlyPressedKey();
                     if(keyPressed != -1)
                     {
+                        focusNext = true;
                         const char* keyString = SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed));
                         free(bindingBuffers[i]);
                         bindingBuffers[i] = (char*)malloc(sizeof(char)*(strlen(keyString)+1));
