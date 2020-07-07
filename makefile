@@ -17,7 +17,7 @@ OBJS := $(addprefix $(ODIR),$(OBJS))
 OBJS += $(ODIR)cimgui.o
 BUILDC = gcc -c -lSDL2 -lSDL2_mixer -lGL -ldl `sdl2-config --cflags`
 BUILDCPP = g++ -c -lSDL2 -lSDL2_mixer -lGL -ldl `sdl2-config --cflags`
-LINK = g++ -lSDL2 -lSDL2_mixer -lGL -ldl #$(CIMGUI_LIB)
+LINK = g++ -lSDL2 -lSDL2_mixer -lGL -ldl -lconfig #$(CIMGUI_LIB)
 CFLAGS = -g -DIMGUI_IMPL_API="extern" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(SRCDIR) -I$(GL3WDIR) -I$(INCLDIR) -I$(CIMGUIDIR) -I$(IMGUIDIR)
 CPPFLAGS = -g -DIMGUI_IMPL_API="extern \"C\"" -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(SRCDIR) -I$(GL3WDIR) -I$(INCLDIR) -I$(CIMGUIDIR) -I$(IMGUIDIR)
 

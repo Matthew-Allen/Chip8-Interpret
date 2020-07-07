@@ -18,7 +18,6 @@ static ImVec4 clearColor;
 static ImVec4 pixelColor;
 static bool settingsMenuActive;
 static Mix_Chunk *squareWave;
-static int keyBindings[16];
 
 int getCurrentlyPressedKey() // Get a single pressed key. If multiple keys are pressed, key with lowest numerical scancode will be prioritized. Return -1 if no key is pressed.
 {
@@ -32,22 +31,26 @@ int getCurrentlyPressedKey() // Get a single pressed key. If multiple keys are p
     return -1;
 }
 
-void showBindingsMenu(bool* open)
+void showBindingsMenu(bool* open, config_t* configData)
 {
     static bool first = true;
     static char labels[16][8];
-    static char* bindingBuffers[16];
+    static const char* bindingBuffers[16];
     bool focusNext = false;
     int keyPressed;
+    char settingName[6];
+    config_setting_t* numpadSetting;
     if(first)
     {
         for(int i = 0; i < 16; i++)
         {
-            bindingBuffers[i] = (char*)malloc(sizeof(char));
-            bindingBuffers[i][0] = '\0';
+            sprintf(settingName, "num%d", i);
+            if(!config_lookup_string(configData, settingName, &bindingBuffers[i]))
+            {
+                bindingBuffers[i] = NULL;
+            }
             sprintf(labels[i],"##Num %X",i);
 
-            keyBindings[i] = -1;
         }
         first = false;
     }
@@ -67,7 +70,13 @@ void showBindingsMenu(bool* open)
                   igSetKeyboardFocusHere(0);
                   focusNext = false;
                 }
-                igInputTextWithHint(labels[i],"<Unbound>", bindingBuffers[i], strlen(bindingBuffers[i]), ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+                if(bindingBuffers[i] != NULL)
+                {
+                    igInputTextWithHint(labels[i],"<Unbound>", bindingBuffers[i], strlen(bindingBuffers[i]), ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+                } else
+                {
+                    igInputTextWithHint(labels[i],"<Unbound>", "\0", 0, ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+                }
                 if(igIsItemActive())
                 {
                     keyPressed = getCurrentlyPressedKey();
@@ -75,10 +84,16 @@ void showBindingsMenu(bool* open)
                     {
                         focusNext = true;
                         const char* keyString = SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed));
-                        free(bindingBuffers[i]);
-                        bindingBuffers[i] = (char*)malloc(sizeof(char)*(strlen(keyString)+1));
-                        strcpy(bindingBuffers[i], SDL_GetKeyName(SDL_GetKeyFromScancode(keyPressed)));
-                        keyBindings[i] = keyPressed; 
+                        sprintf(settingName, "num%d", i);
+                        numpadSetting = config_lookup(configData,settingName);
+                        if(numpadSetting == NULL)
+                        {
+                            printf("Numpad setting %s was NULL, not found.\n", settingName);
+                        } else
+                        {
+                            config_setting_set_string(numpadSetting,keyString);
+                            bindingBuffers[i] = config_setting_get_string(numpadSetting);
+                        }
                     }
                 }
                 igSameLine(0,5);
@@ -89,7 +104,7 @@ void showBindingsMenu(bool* open)
         igEnd();
     }
 }
-void showSettingsMenu(bool *open, Chip8State* state)
+void showSettingsMenu(bool *open, Chip8State* state, config_t* configData)
 {
     if(*open)
     {
@@ -144,16 +159,19 @@ void showSettingsMenu(bool *open, Chip8State* state)
                     NULL,
                     NULL,
                     0);
-            free(state->currentFilePath);
-            state->currentFilePath = fileName;
-            reload(state);
+            if(fileName != NULL)
+            {
+                free(state->currentFilePath);
+                state->currentFilePath = fileName;
+                reload(state);
+            }
         }
         if(igButton("Control Bindings", buttonSize))
         {
             bindingsMenu = bindingsMenu ? false : true;
         }
         igEnd();
-        showBindingsMenu(&bindingsMenu);
+        showBindingsMenu(&bindingsMenu, configData);
     }
 }
 
@@ -361,49 +379,29 @@ void drawPixel(int x, int y)
   drawRect(x*width, y*height, width, height, color);
 }
 
-void parseKeyboard()
+void parseKeyboard(config_t* configData)
 {
   const uint8_t* stateArray = SDL_GetKeyboardState(NULL);
+  char numName[6];
+  const char* keyString;
+  int keyCode;
   clearNumpad();
   for(int i = 0; i < 16; i++)
   {
-      if(keyBindings[i] != -1)
+      sprintf(numName, "num%X", i);
+      if(!config_lookup_string(configData, numName, &keyString))
       {
-          if(stateArray[keyBindings[i]])
-          {
-              setNumpadKey(i);
-          }
+          break;
+      }
+      keyCode = SDL_GetScancodeFromKey(SDL_GetKeyFromName(keyString)); // TODO continue from here.
+      if(stateArray[keyCode])
+      {
+          setNumpadKey(i);
       }
   }
-  /*
-  if(stateArray[SDL_SCANCODE_Q])
-  {
-    setNumpadKey(4);
-  }
-  if(stateArray[SDL_SCANCODE_W])
-  {
-    setNumpadKey(5);
-  }
-  if(stateArray[SDL_SCANCODE_E])
-  {
-    setNumpadKey(6);
-  }
-  if(stateArray[SDL_SCANCODE_A])
-  {
-    setNumpadKey(7);
-  }
-  if(stateArray[SDL_SCANCODE_S])
-  {
-    setNumpadKey(8);
-  }
-  if(stateArray[SDL_SCANCODE_D])
-  {
-    setNumpadKey(9);
-  }
-  */
 }
 
-bool pollEvents()
+bool pollEvents(config_t* configData)
 {
     SDL_Event event;
     while(SDL_PollEvent(&event))
@@ -434,7 +432,7 @@ bool pollEvents()
             break;
       }
     }
-    parseKeyboard();
+    parseKeyboard(configData);
     return true;
 }
 
@@ -556,7 +554,7 @@ void drawScreen(uint8_t screen[][32], ImVec4 color)
     glBindVertexArray(0);
 }
 
-void renderFrame(Chip8State* state)
+void renderFrame(Chip8State* state, config_t* configData)
 {
     if(state->ST > 0)
     {
@@ -570,7 +568,7 @@ void renderFrame(Chip8State* state)
     ImGui_ImplSDL2_NewFrame(SDL_GL_GetCurrentWindow());
     igNewFrame();
     ImGuiIO io = *igGetIO();
-    showSettingsMenu(&settingsMenuActive, state);
+    showSettingsMenu(&settingsMenuActive, state, configData);
 	igRender();
 	//SDL_GL_MakeCurrent(SDL_GL_GetCurrentWindow(), gl_context);
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);

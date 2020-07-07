@@ -1,5 +1,4 @@
 #include "interpret.h"
-#include "settings.h"
 
 typedef void (*jumpTable)(uint8_t* instruction, Chip8State *cpu);
 
@@ -37,17 +36,6 @@ void clearNumpad()
 void setNumpadKey(int keyIndex)
 {
   numpad[keyIndex] = true;
-}
-
-void debugPrint(const char * format,...)
-{
-  va_list args;
-  va_start( args, format);
-  if(getDebugMode())
-  {
-    vprintf(format, args);
-  }
-  va_end(args);
 }
 
 Chip8State* createDefaultState()
@@ -362,7 +350,6 @@ void jumpToAddress(uint8_t* instruction, Chip8State *cpu)
 void executeSubroutine(uint8_t* instruction, Chip8State *cpu)
 {
   uint16_t address = decode12bitAddr(instruction);
-  debugPrint("Executing subroutine at 0x%X\n", address);
   cpu->stack[cpu->stackPointer] = cpu->PC;
   cpu->stackPointer++;
   cpu->PC = address - 2;
@@ -374,7 +361,6 @@ void skipEqImm(uint8_t* instruction, Chip8State *cpu)
   uint8_t reg = getLowerNibble(instruction[0]);
   if(value == cpu->registers[reg])
   {
-    //debugPrint("Equality found, skipping next instruction.\n");
     cpu->PC += 2;
   }
 }
@@ -408,9 +394,7 @@ void storeImmediate(uint8_t* instruction, Chip8State *cpu)
 void addImmediate(uint8_t* instruction, Chip8State *cpu)
 {
   int reg = getLowerNibble(instruction[0]);
-  //debugPrint("Adding %d to %d", cpu->registers[reg], instruction[1], cpu->registers[reg]);
   cpu->registers[reg] += instruction[1];
-  //debugPrint(" = %d\n", cpu->registers[reg]);
 }
 
 void store(uint8_t* instruction, Chip8State *cpu)
@@ -697,7 +681,6 @@ int run(Chip8State *cpu)
 
     uint8_t* nextInstruction = &cpu->memory[cpu->PC];
     int nextOp = decodeInstruction(nextInstruction);
-    //debugPrint("Running instruction 0x%X at address: 0x%X\n", ( cpu->memory[cpu->PC] << 8  ) + cpu->memory[cpu->PC+1], cpu->PC);
     if(nextOp == INVALID_OP || nextOp == EXEC_ASM)
     {
         return -1;
