@@ -91,11 +91,7 @@ int main(int argc, char* argv[])
         timediff(&result, &diffTime, &cpuTime);
         if((result.tv_nsec / (double) MILLION) > (1000/(double)state->frequency) && state->paused == false)
         {
-            if(run(state) == -1)
-            {
-                printf("Invalid opcode, exiting.\n");
-                return -1;
-            }
+            int opResult = run(state);
             clock_gettime(CLOCK_MONOTONIC, &cpuTime);
         }
 

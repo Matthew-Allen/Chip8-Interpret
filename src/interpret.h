@@ -34,6 +34,7 @@ typedef struct cpuState
     bool paused;
     int shiftMethod;
     char* currentFilePath;
+    int error;
 } Chip8State;
 
 enum iType{EXEC_ASM, CLS, RETURN, JMP,
@@ -48,15 +49,19 @@ enum iType{EXEC_ASM, CLS, RETURN, JMP,
   INVALID_OP=-1
 };
 
-void executeASM();
+enum errorType{
+    OK,
+    BOUND_ERROR,
+    ASM_NOT_SUPPORTED,
+    INVALID_REG
+};
+
 
 uint8_t getUpperNibble(uint8_t inputChar);
 
 uint8_t getLowerNibble(int8_t inputChar);
 
 int decodeInstruction(uint8_t* instruction);
-
-void returnFromSub(uint8_t* instruction, Chip8State *cpu);
 
 Chip8State* createDefaultState();
 

@@ -104,7 +104,7 @@ void showBindingsMenu(bool* open, config_t* configData)
         igEnd();
     }
 }
-void showSettingsMenu(bool *open, Chip8State* state, config_t* configData)
+void showSettingsMenu(bool *open, Chip8State* cpu, config_t* configData)
 {
     if(*open)
     {
@@ -116,38 +116,38 @@ void showSettingsMenu(bool *open, Chip8State* state, config_t* configData)
         bool displayCollapse = true;
         igBegin("Settings", open, ImGuiWindowFlags_AlwaysAutoResize);
         igText("Currently Running:");
-        igText(state->currentFilePath);
+        igText(cpu->currentFilePath);
 
         if(igCollapsingHeaderBoolPtr("CPU Settings", &freqCollapse, 0))
         {
-            igInputInt("Frequency", &state->frequency, 10, 100, ImGuiInputTextFlags_CharsDecimal);
+            igInputInt("Frequency", &cpu->frequency, 10, 100, ImGuiInputTextFlags_CharsDecimal);
             igText("Bit Shift Method");
-            igRadioButtonIntPtr("Store to VX", &state->shiftMethod, 0);
+            igRadioButtonIntPtr("Store to VX", &cpu->shiftMethod, 0);
             igSameLine(0, 5);
-            igRadioButtonIntPtr("Store to VY", &state->shiftMethod, 1);
+            igRadioButtonIntPtr("Store to VY", &cpu->shiftMethod, 1);
         }
         if(igCollapsingHeaderBoolPtr("Display Settings", &displayCollapse, 0))
         {
             igColorEdit3("Background color", (float*)&clearColor, 0);
             igColorEdit3("Pixel color", (float*)&pixelColor, 0);
         }
-        if(state->paused)
+        if(cpu->paused)
         {
             if(igButton("Unpause", buttonSize))
             {
-                state->paused = false;
+                cpu->paused = false;
             }
         } else
         {
             if(igButton("Pause", buttonSize))
             {
-                state->paused = true;
+                cpu->paused = true;
             }
         }
         igSameLine(0,5);
         if(igButton("Reload", buttonSize))
         {
-            reload(state);
+            reload(cpu);
         }
         igSameLine(0,5);
         if(igButton("Open File", buttonSize))
@@ -161,9 +161,9 @@ void showSettingsMenu(bool *open, Chip8State* state, config_t* configData)
                     0);
             if(fileName != NULL)
             {
-                free(state->currentFilePath);
-                state->currentFilePath = fileName;
-                reload(state);
+                free(cpu->currentFilePath);
+                cpu->currentFilePath = fileName;
+                reload(cpu);
             }
         }
         if(igButton("Control Bindings", buttonSize))
@@ -173,6 +173,33 @@ void showSettingsMenu(bool *open, Chip8State* state, config_t* configData)
         igEnd();
         showBindingsMenu(&bindingsMenu, configData);
     }
+}
+
+void showErrorDialog(Chip8State* cpu, bool* open)
+{
+    ImVec2 buttonSize;
+    buttonSize.x = 0;
+    buttonSize.y = 0;
+    igBegin("Error", open, ImGuiWindowFlags_AlwaysAutoResize);
+    switch(cpu->error)
+    {
+        case BOUND_ERROR:
+            igText("Attempted to access invalid address");
+            break;
+        case ASM_NOT_SUPPORTED:
+            igText("ASM call instructions not supported.");
+            break;
+        case INVALID_REG:
+            igText("Invalid Register");
+            break;
+        
+    }
+    igText("Instruction at 0x%X\n", cpu->PC);
+    if(igButton("Ok",buttonSize))
+    {
+        cpu->error = 0;
+    }
+    igEnd();
 }
 
 
@@ -554,21 +581,26 @@ void drawScreen(uint8_t screen[][32], ImVec4 color)
     glBindVertexArray(0);
 }
 
-void renderFrame(Chip8State* state, config_t* configData)
+void renderFrame(Chip8State* cpu, config_t* configData)
 {
-    if(state->ST > 0)
+    bool errorDialogActive = false;
+    if(cpu->ST > 0)
     {
         playSquareWave();
     } else
     {
         stopSound();
     }
-    uint8_t (*screen)[32] = state->screen;
+    uint8_t (*screen)[32] = cpu->screen;
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(SDL_GL_GetCurrentWindow());
     igNewFrame();
     ImGuiIO io = *igGetIO();
-    showSettingsMenu(&settingsMenuActive, state, configData);
+    showSettingsMenu(&settingsMenuActive, cpu, configData);
+    if(cpu->error != 0)
+    {
+        showErrorDialog(cpu, &errorDialogActive);
+    }
 	igRender();
 	//SDL_GL_MakeCurrent(SDL_GL_GetCurrentWindow(), gl_context);
 	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
